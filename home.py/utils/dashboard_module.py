@@ -5,8 +5,10 @@ import plotly.express as px
 import json
 import base64
 import io
+import os
 from datetime import datetime
 import plotly.graph_objects as go
+from utils import charts
 
 
 
@@ -195,100 +197,34 @@ class DashboardComponent:
 
     def _render_violin_plot(self, df):
         """Render a violin plot component"""
-        y = self.config.get('y')
-        x = self.config.get('x')
-
-        if not y:
+        if not self.config.get('y'):
             st.error("Missing required configuration: y")
             return
-
-        # Check if columns exist
-        if y not in df.columns:
-            st.error(f"Column '{y}' not found in dataset. Available columns: {', '.join(df.columns)}")
-            return
-
-        if x and x not in df.columns:
-            st.error(f"Column '{x}' not found in dataset. Available columns: {', '.join(df.columns)}")
-            return
-
-        # Create chart
         try:
-            fig = px.violin(
-                df,
-                y=y,
-                x=x,
-                box=True,
-                points="all",
-                title=self.title,
-                height=self.height
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_violin(df, cfg), use_container_width=True)
         except Exception as e:
             st.error(f"Error rendering violin plot: {str(e)}")
 
     def _render_kde_plot(self, df):
         """Render a KDE plot component"""
-        x = self.config.get('x')
-
-        if not x:
+        if not self.config.get('x'):
             st.error("Missing required configuration: x")
             return
-
-        # Check if column exists
-        if x not in df.columns:
-            st.error(f"Column '{x}' not found in dataset. Available columns: {', '.join(df.columns)}")
-            return
-
-        # Create chart using plotly's histogram with kde
         try:
-            fig = px.histogram(
-                df,
-                x=x,
-                histnorm='probability density',
-                title=self.title,
-                height=self.height
-            )
-
-            fig.update_traces(histfunc="count", histnorm='probability density')
-            fig.update_layout(bargap=0.05)
-
-            # Add KDE curve
-            fig.add_trace(px.density_contour(df, x=x).data[0])
-
-            st.plotly_chart(fig, use_container_width=True)
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_kde(df, cfg), use_container_width=True)
         except Exception as e:
             st.error(f"Error rendering KDE plot: {str(e)}")
 
     def _render_box_plot(self, df):
         """Render a box plot component"""
-        y = self.config.get('y')
-        x = self.config.get('x')
-
-        if not y:
+        if not self.config.get('y'):
             st.error("Missing required configuration: y")
             return
-
-        # Check if columns exist
-        if y not in df.columns:
-            st.error(f"Column '{y}' not found in dataset. Available columns: {', '.join(df.columns)}")
-            return
-
-        if x and x not in df.columns:
-            st.error(f"Column '{x}' not found in dataset. Available columns: {', '.join(df.columns)}")
-            return
-
-        # Create chart
         try:
-            fig = px.box(
-                df,
-                y=y,
-                x=x,
-                title=self.title,
-                height=self.height
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_box(df, cfg), use_container_width=True)
         except Exception as e:
             st.error(f"Error rendering box plot: {str(e)}")
 
@@ -638,192 +574,69 @@ class DashboardComponent:
 
     def _render_bar_chart(self, df):
         """Render a bar chart component"""
-        x = self.config.get('x')
-        y = self.config.get('y')
-        color = self.config.get('color')
-        orientation = self.config.get('orientation', 'vertical')
-        aggregation = self.config.get('aggregation', 'sum')
-
-        if not x or not y:
+        if not self.config.get('x') or not self.config.get('y'):
             st.error("Missing required configuration: x and y")
             return
-
-        # Prepare data with aggregation if needed
-        if aggregation != 'none':
-            if aggregation == 'sum':
-                agg_data = df.groupby(x)[y].sum().reset_index()
-            elif aggregation == 'mean':
-                agg_data = df.groupby(x)[y].mean().reset_index()
-            elif aggregation == 'count':
-                agg_data = df.groupby(x)[y].count().reset_index()
-            else:
-                agg_data = df
-        else:
-            agg_data = df
-
-        # Create chart
-        if orientation == 'vertical':
-            fig = px.bar(
-                agg_data,
-                x=x,
-                y=y,
-                color=color,
-                title=self.title,
-                height=self.height
-            )
-        else:
-            fig = px.bar(
-                agg_data,
-                x=y,
-                y=x,
-                color=color,
-                title=self.title,
-                orientation='h',
-                height=self.height
-            )
-
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_bar(df, cfg), use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering bar chart: {str(e)}")
 
     def _render_line_chart(self, df):
         """Render a line chart component"""
-        x = self.config.get('x')
-        y = self.config.get('y')
-        color = self.config.get('color')
-        aggregation = self.config.get('aggregation', 'none')
-
-        if not x or not y:
+        if not self.config.get('x') or not self.config.get('y'):
             st.error("Missing required configuration: x and y")
             return
-
-        # Prepare data with aggregation if needed
-        if aggregation != 'none':
-            if aggregation == 'sum':
-                agg_data = df.groupby(x)[y].sum().reset_index()
-            elif aggregation == 'mean':
-                agg_data = df.groupby(x)[y].mean().reset_index()
-            elif aggregation == 'count':
-                agg_data = df.groupby(x)[y].count().reset_index()
-            else:
-                agg_data = df
-        else:
-            agg_data = df
-
-        # Create chart
-        fig = px.line(
-            agg_data,
-            x=x,
-            y=y,
-            color=color,
-            title=self.title,
-            height=self.height
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_line(df, cfg), use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering line chart: {str(e)}")
 
     def _render_scatter_chart(self, df):
         """Render a scatter plot component"""
-        x = self.config.get('x')
-        y = self.config.get('y')
-        color = self.config.get('color')
-        size = self.config.get('size')
-
-        if not x or not y:
+        if not self.config.get('x') or not self.config.get('y'):
             st.error("Missing required configuration: x and y")
             return
-
-        # Create chart
-        fig = px.scatter(
-            df,
-            x=x,
-            y=y,
-            color=color,
-            size=size,
-            title=self.title,
-            height=self.height
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_scatter(df, cfg), use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering scatter plot: {str(e)}")
 
     def _render_pie_chart(self, df):
         """Render a pie chart component"""
-        values = self.config.get('values')
-        names = self.config.get('names')
-
-        if not values or not names:
+        if not self.config.get('values') or not self.config.get('names'):
             st.error("Missing required configuration: values and names")
             return
-
-        # Create chart
-        fig = px.pie(
-            df,
-            values=values,
-            names=names,
-            title=self.title,
-            height=self.height
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_pie(df, cfg), use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering pie chart: {str(e)}")
 
     def _render_histogram(self, df):
         """Render a histogram component"""
-        x = self.config.get('x')
-        bins = self.config.get('bins', 20)
-        color = self.config.get('color')
-
-        if not x:
+        if not self.config.get('x'):
             st.error("Missing required configuration: x")
             return
-
-        # Check if the column exists in the dataframe
-        if x not in df.columns:
-            st.error(f"Column '{x}' not found in dataset. Available columns: {', '.join(df.columns)}")
-            return
-
-        # Create chart
         try:
-            fig = px.histogram(
-                df,
-                x=x,
-                color=color,
-                nbins=bins,
-                title=self.title,
-                height=self.height
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_histogram(df, cfg), use_container_width=True)
         except Exception as e:
             st.error(f"Error rendering histogram: {str(e)}")
 
     def _render_heatmap(self, df):
         """Render a heatmap component"""
-        x = self.config.get('x')
-        y = self.config.get('y')
-        values = self.config.get('values')
-        aggregation = self.config.get('aggregation', 'sum')
-
-        if not x or not y or not values:
+        if not self.config.get('x') or not self.config.get('y') or not self.config.get('values'):
             st.error("Missing required configuration: x, y, and values")
             return
-
-        # Prepare data
-        if aggregation == 'sum':
-            pivot_data = df.pivot_table(index=y, columns=x, values=values, aggfunc='sum')
-        elif aggregation == 'mean':
-            pivot_data = df.pivot_table(index=y, columns=x, values=values, aggfunc='mean')
-        elif aggregation == 'count':
-            pivot_data = df.pivot_table(index=y, columns=x, values=values, aggfunc='count')
-        else:
-            st.error(f"Unsupported aggregation: {aggregation}")
-            return
-
-        # Create chart
-        fig = px.imshow(
-            pivot_data,
-            title=self.title,
-            height=self.height
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            st.plotly_chart(charts.build_heatmap(df, cfg), use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering heatmap: {str(e)}")
 
     def _render_table(self, df):
         """Render a table component"""
@@ -985,6 +798,12 @@ class Dashboard:
             st.info("This dashboard has no components yet. Add some components to get started.")
             return
 
+        # Down-sample large datasets so dashboard charts stay responsive
+        # (mirrors the visualization page's safeguard).
+        if len(df) > MAX_DASHBOARD_ROWS:
+            st.caption(f"Showing a {MAX_DASHBOARD_ROWS:,}-row sample of {len(df):,} rows.")
+            df = df.sample(MAX_DASHBOARD_ROWS, random_state=42)
+
         # Organize components into rows
         i = 0
         while i < len(self.components):
@@ -1006,6 +825,41 @@ class Dashboard:
                     component.render(df)
 
 
+# Maximum rows rendered in a dashboard chart (mirrors the visualization page).
+MAX_DASHBOARD_ROWS = 5000
+
+
+def _dashboards_file():
+    """Path to the on-disk dashboard store (created on demand)."""
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.app_data')
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, 'dashboards.json')
+
+
+def save_dashboards(dashboards):
+    """Persist all dashboards ({name: Dashboard}) to disk as JSON (best-effort)."""
+    try:
+        payload = {name: dash.to_dict() for name, dash in dashboards.items()}
+        with open(_dashboards_file(), 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2)
+    except Exception as e:
+        print(f"Could not save dashboards: {e}")
+
+
+def load_dashboards():
+    """Load dashboards from disk. Returns {name: Dashboard} (empty if none/invalid)."""
+    try:
+        path = _dashboards_file()
+        if not os.path.exists(path):
+            return {}
+        with open(path, 'r', encoding='utf-8') as f:
+            payload = json.load(f)
+        return {name: Dashboard.from_dict(data) for name, data in payload.items()}
+    except Exception as e:
+        print(f"Could not load dashboards: {e}")
+        return {}
+
+
 def dashboard_manager_ui(st, df):
     """
     Streamlit UI for managing dashboards
@@ -1016,9 +870,9 @@ def dashboard_manager_ui(st, df):
     """
     st.subheader("Dashboard Manager")
 
-    # Initialize session state for dashboards
+    # Initialize session state for dashboards (loading any persisted ones).
     if 'dashboards' not in st.session_state:
-        st.session_state.dashboards = {}
+        st.session_state.dashboards = load_dashboards()
 
     if 'current_dashboard' not in st.session_state:
         st.session_state.current_dashboard = None
@@ -1245,7 +1099,7 @@ def dashboard_manager_ui(st, df):
                     if chart_type in ["bar", "line"]:
                         x_col = st.selectbox(f"X-axis Column:", df.columns, key="new_x_col")
                         y_col = st.selectbox(f"Y-axis Column:",
-                                             [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                             [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                              key="new_y_col")
                         aggregation = st.selectbox("Aggregation:",
                                                    ["none", "sum", "mean", "count"],
@@ -1264,11 +1118,11 @@ def dashboard_manager_ui(st, df):
 
                     elif chart_type == "scatter":
                         x_col = st.selectbox(f"X-axis Column:",
-                                             [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                             [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                              key="new_scatter_x")
                         y_col = st.selectbox(f"Y-axis Column:",
                                              [c for c in df.columns if
-                                              df[c].dtype in ['int64', 'float64'] and c != x_col],
+                                              pd.api.types.is_numeric_dtype(df[c]) and c != x_col],
                                              key="new_scatter_y")
 
                         color_col = st.selectbox("Color Column (optional):",
@@ -1282,7 +1136,7 @@ def dashboard_manager_ui(st, df):
 
                     elif chart_type == "pie":
                         values_col = st.selectbox(f"Values Column:",
-                                                  [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                                  [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                                   key="new_pie_values")
                         names_col = st.selectbox(f"Names Column:",
                                                  [c for c in df.columns if c != values_col],
@@ -1295,7 +1149,7 @@ def dashboard_manager_ui(st, df):
 
                     elif chart_type == "histogram":
                         x_col = st.selectbox(f"Column for Histogram:",
-                                             [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                             [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                              key="new_hist_x")
                         bins = st.slider("Number of Bins:", 5, 100, 20, key="new_hist_bins")
 
@@ -1306,7 +1160,7 @@ def dashboard_manager_ui(st, df):
 
                     elif chart_type == "box":
                         y_col = st.selectbox(f"Value Column:",
-                                             [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                             [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                              key="new_box_y")
                         x_col = st.selectbox("Category Column (optional):",
                                              ["None"] + [c for c in df.columns if c != y_col],
@@ -1322,7 +1176,7 @@ def dashboard_manager_ui(st, df):
                                              [c for c in df.columns if c != x_col],
                                              key="new_heatmap_y")
                         values_col = st.selectbox(f"Values Column:",
-                                                  [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                                  [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                                   key="new_heatmap_values")
                         aggregation = st.selectbox("Aggregation:", ["sum", "mean", "count"], key="new_heatmap_agg")
 
@@ -1347,7 +1201,7 @@ def dashboard_manager_ui(st, df):
 
                     elif chart_type == "metric":
                         metric_col = st.selectbox(f"Column for Metric:",
-                                                  [c for c in df.columns if df[c].dtype in ['int64', 'float64']],
+                                                  [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])],
                                                   key="new_metric_col")
                         calculation = st.selectbox("Calculation:",
                                                    ["mean", "sum", "count", "min", "max"],
@@ -1403,7 +1257,7 @@ def dashboard_manager_ui(st, df):
                                 key="edit_comp_x"
                             )
 
-                            numeric_cols = [c for c in df.columns if df[c].dtype in ['int64', 'float64']]
+                            numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
                             y_index = numeric_cols.index(new_config.get('y')) if new_config.get(
                                 'y') in numeric_cols else 0
                             new_config['y'] = st.selectbox(
@@ -1603,3 +1457,6 @@ def dashboard_manager_ui(st, df):
 
                     except Exception as e:
                         st.error(f"Error importing dashboard from file: {str(e)}")
+
+    # Persist all dashboards to disk so they survive a refresh / restart.
+    save_dashboards(st.session_state.dashboards)

@@ -224,7 +224,7 @@ def add_to_dashboard(fig, chart_name, chart_type):
 
         # Get available columns for configuration
         df_columns = viz_data.columns.tolist()
-        numeric_columns = [col for col in df_columns if viz_data[col].dtype in ['int64', 'float64']]
+        numeric_columns = [col for col in df_columns if pd.api.types.is_numeric_dtype(viz_data[col])]
         categorical_columns = [col for col in df_columns if col not in numeric_columns]
 
         # Create appropriate configuration based on chart type

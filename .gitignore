@@ -28,6 +28,7 @@ Thumbs.db
 # Runtime / generated data (not source)
 uploads/
 temp/
+.app_data/
 *.rar
 *.zip
 
