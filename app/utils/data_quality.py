@@ -38,6 +38,17 @@ def enhanced_data_quality(df):
         })
         return quality
 
+    # Memory guard: assess a sample for very large datasets so the app stays
+    # within hosted memory limits (the summary above keeps the true counts).
+    if len(df) > 50000:
+        quality['recommendations'].append({
+            'column': None,
+            'issue': 'sampled',
+            'description': f'Large dataset ({len(df):,} rows); quality checks used a 50,000-row sample.',
+            'severity': 'low'
+        })
+        df = df.sample(50000, random_state=42)
+
     # Detect column types
     numeric_cols = df.select_dtypes(include=['number']).columns
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns

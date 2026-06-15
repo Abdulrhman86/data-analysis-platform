@@ -1,0 +1,7 @@
+# Streamlit configuration (read from the repo root on Streamlit Community Cloud).
+[server]
+maxUploadSize = 50
+headless = true
+
+[browser]
+gatherUsageStats = false

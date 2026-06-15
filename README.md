@@ -59,9 +59,8 @@ python -m venv .venv
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run the app (from inside the application package)
-cd app
-streamlit run home.py
+# 3. Run the app (from the project root)
+streamlit run app/home.py
 ```
 
 The app then opens in your browser at <http://localhost:8501>.
@@ -70,8 +69,7 @@ The app then opens in your browser at <http://localhost:8501>.
 
 ```bash
 pip install -r requirements-dev.txt
-cd app
-pytest
+pytest app/tests
 ```
 
 ## Status

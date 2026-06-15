@@ -1,4 +1,6 @@
 # config.py
+import os
+
 
 class Config:
     # Application metadata
@@ -7,7 +9,7 @@ class Config:
 
     # File settings
     ALLOWED_EXTENSIONS = ["csv", "xlsx", "xls"]
-    MAX_FILE_SIZE_MB = 200
+    MAX_FILE_SIZE_MB = 50  # keep within Streamlit Community Cloud's ~1 GB memory
     DEFAULT_PREVIEW_ROWS = 10
 
     # Theme colors
@@ -183,11 +185,14 @@ class Config:
         """
 
 
-# Path configuration
+# Path configuration. Anchored to this file's directory so they resolve no matter
+# the working directory (e.g. Streamlit Cloud runs from the repo root with the
+# main file at app/home.py).
 class Paths:
-    STATIC_DIR = "static"
-    TEMP_DIR = "temp"
-    UPLOAD_DIR = "uploads"
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+    STATIC_DIR = os.path.join(_APP_DIR, "static")
+    TEMP_DIR = os.path.join(_APP_DIR, "temp")
+    UPLOAD_DIR = os.path.join(_APP_DIR, "uploads")
 
 
 # Feature flags - useful for enabling/disabling features

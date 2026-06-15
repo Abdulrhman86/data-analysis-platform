@@ -105,8 +105,15 @@ st.markdown('<div class="section-title">Select Data Source</div>', unsafe_allow_
 col1, col2 = st.columns([3, 1])
 with col1:
     uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=Config.ALLOWED_EXTENSIONS)
+    st.caption("🔒 This is a public demo — please don't upload confidential or personal data.")
 
     if uploaded_file is not None:
+        size_mb = uploaded_file.size / (1024 * 1024)
+        if size_mb > Config.MAX_FILE_SIZE_MB:
+            st.error(f"File is {size_mb:.1f} MB — the limit is {Config.MAX_FILE_SIZE_MB} MB. "
+                     "Please upload a smaller file or a sample of your data.")
+            st.stop()
+
         st.session_state.file = uploaded_file
         st.session_state.file_name = uploaded_file.name
         st.session_state.data = read_file(uploaded_file)

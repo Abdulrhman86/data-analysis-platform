@@ -827,6 +827,8 @@ def dashboard_manager_ui(st, df):
         df: pandas DataFrame
     """
     st.subheader("Dashboard Manager")
+    st.caption("Dashboards are saved on the server. On a hosted demo they may reset when the "
+               "app restarts — use Import/Export to keep a durable copy.")
 
     # Initialize session state for dashboards (loading any persisted ones).
     if 'dashboards' not in st.session_state:
