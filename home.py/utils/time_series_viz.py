@@ -142,9 +142,9 @@ def display_resampled_trends(viz_data, date_col, value_col):
     freq_map = {
         "Day": "D",
         "Week": "W",
-        "Month": "M",
-        "Quarter": "Q",
-        "Year": "Y"
+        "Month": "ME",
+        "Quarter": "QE",
+        "Year": "YE"
     }
 
     # Select aggregation method

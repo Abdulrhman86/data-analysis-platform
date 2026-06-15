@@ -72,84 +72,6 @@ class DashboardComponent:
             source=data.get('source', 'dashboard')
         )
 
-    @classmethod
-    def from_visualization(cls, title, chart_type, fig, width=6, height=400):
-        """
-        Create a dashboard component from a visualization
-
-        Args:
-            title: Title of the component
-            chart_type: Type of chart
-            fig: Plotly figure object
-            width: Width in bootstrap columns (1-12)
-            height: Height in pixels
-
-        Returns:
-            DashboardComponent instance
-        """
-        # Extract configuration from the figure
-        config = {}
-
-        # Different configurations based on chart type
-        if chart_type == 'bar':
-            if hasattr(fig, 'data') and len(fig.data) > 0:
-                if hasattr(fig.data[0], 'x') and fig.data[0].x is not None:
-                    config['x'] = fig.data[0].x.name if hasattr(fig.data[0].x, 'name') else 'x_values'
-                if hasattr(fig.data[0], 'y') and fig.data[0].y is not None:
-                    config['y'] = fig.data[0].y.name if hasattr(fig.data[0].y, 'name') else 'y_values'
-
-        elif chart_type == 'line':
-            if hasattr(fig, 'data') and len(fig.data) > 0:
-                if hasattr(fig.data[0], 'x') and fig.data[0].x is not None:
-                    config['x'] = fig.data[0].x.name if hasattr(fig.data[0].x, 'name') else 'x_values'
-                if hasattr(fig.data[0], 'y') and fig.data[0].y is not None:
-                    config['y'] = fig.data[0].y.name if hasattr(fig.data[0].y, 'name') else 'y_values'
-
-        elif chart_type == 'scatter':
-            if hasattr(fig, 'data') and len(fig.data) > 0:
-                if hasattr(fig.data[0], 'x') and fig.data[0].x is not None:
-                    config['x'] = fig.data[0].x.name if hasattr(fig.data[0].x, 'name') else 'x_values'
-                if hasattr(fig.data[0], 'y') and fig.data[0].y is not None:
-                    config['y'] = fig.data[0].y.name if hasattr(fig.data[0].y, 'name') else 'y_values'
-
-        elif chart_type == 'pie':
-            if hasattr(fig, 'data') and len(fig.data) > 0:
-                if hasattr(fig.data[0], 'values') and fig.data[0].values is not None:
-                    config['values'] = fig.data[0].values.name if hasattr(fig.data[0].values, 'name') else 'values'
-                if hasattr(fig.data[0], 'labels') and fig.data[0].labels is not None:
-                    config['names'] = fig.data[0].labels.name if hasattr(fig.data[0].labels, 'name') else 'names'
-
-        elif chart_type == 'histogram':
-            if hasattr(fig, 'data') and len(fig.data) > 0:
-                if hasattr(fig.data[0], 'x') and fig.data[0].x is not None:
-                    config['x'] = fig.data[0].x.name if hasattr(fig.data[0].x, 'name') else 'x_values'
-
-        elif chart_type == 'box':
-            if hasattr(fig, 'data') and len(fig.data) > 0:
-                if hasattr(fig.data[0], 'y') and fig.data[0].y is not None:
-                    config['y'] = fig.data[0].y.name if hasattr(fig.data[0].y, 'name') else 'y_values'
-                if hasattr(fig.data[0], 'x') and fig.data[0].x is not None:
-                    config['x'] = fig.data[0].x.name if hasattr(fig.data[0].x, 'name') else 'x_values'
-
-        # Add in layout information if available
-        if hasattr(fig, 'layout'):
-            if hasattr(fig.layout, 'title') and hasattr(fig.layout.title, 'text'):
-                if not title:  # Only use the figure's title if no title was provided
-                    title = fig.layout.title.text
-
-        # Create component with the visualization source
-        return cls(
-            title=title,
-            chart_type=chart_type,
-            config=config,
-            width=width,
-            height=height,
-            source='visualization'
-        )
-
-
-        # Create a container with title
-
     def render(self, df):
         """Render the component with data"""
         with st.container(border=True):
@@ -560,31 +482,6 @@ class DashboardComponent:
                 st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             st.error(f"Error rendering summary statistics: {str(e)}")
-
-    def _render_stored_figure(self, df):
-        """Render a stored plotly figure"""
-        try:
-            import json
-            from plotly.graph_objs import Figure
-
-            # Get the stored figure JSON
-            figure_json = self.config.get('plotly_figure')
-            if not figure_json:
-                st.error("No stored figure found in component")
-                return
-
-            # Convert JSON string to dict, then create Figure
-            figure_dict = json.loads(figure_json)
-            fig = Figure(figure_dict)
-
-            # Adjust height to match component
-            fig.update_layout(height=self.height)
-
-            # Display the figure
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Error rendering stored figure: {str(e)}")
-
 
     def _render_bar_chart(self, df):
         """Render a bar chart component"""
@@ -1446,10 +1343,7 @@ def dashboard_manager_ui(st, df):
                     with st.expander("View Dashboard JSON"):
                         st.code(json_str, language="json")
 
-                    # Copy to clipboard
-                    if st.button("Copy JSON to Clipboard", key="copy_json"):
-                        st.code(json_str, language="json")
-                        st.success("JSON copied to clipboard (select and copy the code above)")
+                    st.caption("Tip: expand the JSON above to select and copy it, or use the download link.")
 
         with import_tab:
             # Import dashboard from JSON

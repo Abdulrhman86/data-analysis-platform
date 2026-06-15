@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import json
-import pickle
 import base64
 import difflib
 import functools
@@ -864,10 +863,7 @@ def pipeline_manager_ui(st, df, processors):
                 with st.expander("View Pipeline JSON"):
                     st.code(json_str, language="json")
 
-                # Copy to clipboard button
-                if st.button("Copy JSON to Clipboard"):
-                    st.code(json_str, language="json")
-                    st.success("JSON copied to clipboard (select and copy the code above)")
+                st.caption("Tip: expand the JSON above to select and copy it, or use the download link.")
         else:
             st.info("No pipelines available for export.")
 
