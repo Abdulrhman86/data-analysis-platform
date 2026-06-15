@@ -327,6 +327,32 @@ class Config:
         }
         [data-testid="stSpinner"] svg { filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6)); }
 
+        /* ============ U4: WORKFLOW STEP INDICATOR ============ */
+        .stepper { display: flex; align-items: center; margin: 0 0 var(--space-6); }
+        .step { display: flex; align-items: center; gap: 0.5rem; flex: 0 0 auto; }
+        .step-dot {
+            width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+            font-size: 0.85rem; font-weight: 700; font-family: var(--font-display);
+            background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
+            transition: all var(--dur) var(--ease);
+        }
+        .step-label { font-size: 0.82rem; color: var(--text-dim); font-weight: 500; white-space: nowrap; }
+        .step-line { flex: 1 1 auto; height: 2px; min-width: 12px; background: var(--border); margin: 0 0.6rem; border-radius: 2px; }
+        .step-line.done { background: linear-gradient(90deg, var(--success), var(--primary)); }
+        .step.done .step-dot { color: var(--success); border-color: rgba(16, 185, 129, 0.45); }
+        .step.current .step-dot { background: var(--accent-grad); color: #fff; border: none; box-shadow: var(--glow); }
+        .step.current .step-label { color: var(--text); font-weight: 700; }
+        @media (max-width: 720px) { .step-label { display: none; } }
+
+        /* U4: empty-state panel */
+        .empty-state {
+            text-align: center; padding: var(--space-7) var(--space-5);
+            border: 1px dashed var(--border-strong); border-radius: var(--radius-lg);
+            background: var(--surface); color: var(--text-dim);
+        }
+        .empty-state .es-icon { font-size: 2.4rem; margin-bottom: var(--space-3); display: block; }
+        .empty-state .es-title { color: var(--text); font-weight: 600; font-size: 1.1rem; margin-bottom: var(--space-2); font-family: var(--font-display); }
+
         /* accessibility: honor reduced-motion — neutralize all motion */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
@@ -338,6 +364,36 @@ class Config:
         }
         </style>
         """
+
+    # Workflow steps for the progress indicator (one per page, 1..6).
+    WORKFLOW_STEPS = ["Upload", "Quality", "Prepare", "Visualize", "Dashboard", "Model"]
+
+    @classmethod
+    def stepper(cls, current):
+        """Render the workflow step indicator. `current` is 1-based (1..6)."""
+        out = ['<div class="stepper">']
+        for i, name in enumerate(cls.WORKFLOW_STEPS, start=1):
+            if i > 1:
+                out.append('<div class="step-line {}"></div>'.format("done" if i <= current else ""))
+            state = "done" if i < current else ("current" if i == current else "")
+            mark = "✓" if i < current else str(i)
+            out.append('<div class="step {}"><div class="step-dot">{}</div>'
+                       '<div class="step-label">{}</div></div>'.format(state, mark, name))
+        out.append('</div>')
+        return "".join(out)
+
+    @staticmethod
+    def metric_card(label, value):
+        """A single-block glass metric card (label + value wrapped together, so the
+        container actually wraps its content instead of rendering as an empty box)."""
+        return ('<div class="metric-container"><span class="metric-label">{}</span>'
+                '<div class="metric-value">{}</div></div>').format(label, value)
+
+    @staticmethod
+    def empty_state(title, message, icon="📂"):
+        """A styled empty-state panel for pages that have no data yet."""
+        return ('<div class="empty-state"><span class="es-icon">{}</span>'
+                '<div class="es-title">{}</div><div>{}</div></div>').format(icon, title, message)
 
 
 # Path configuration. Anchored to this file's directory so they resolve no matter

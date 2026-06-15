@@ -49,6 +49,7 @@ st.set_page_config(
 
 # Apply the CSS from config
 st.markdown(Config.get_css(), unsafe_allow_html=True)
+st.markdown(Config.stepper(4), unsafe_allow_html=True)
 
 # Page header with back navigation
 st.markdown('<div class="page-header">', unsafe_allow_html=True)
@@ -64,11 +65,12 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # Check if data exists in session state
 if 'data' not in st.session_state or st.session_state.data is None:
-    st.markdown('<div class="card" style="text-align: center; padding: 3rem;">', unsafe_allow_html=True)
-    st.warning("No data loaded. Please upload a dataset first.")
+    st.markdown(Config.empty_state(
+        "No data loaded yet",
+        "Upload a CSV or Excel file to begin — or load the bundled sample dataset from the Upload page."),
+        unsafe_allow_html=True)
     if st.button('Go to Data Upload', use_container_width=True):
         st.switch_page("pages/1_upload_data.py")
-    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # Get the data and create a working copy
@@ -82,20 +84,11 @@ st.markdown('<div class="section-title">Dataset Overview</div>', unsafe_allow_ht
 # Basic data info
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Rows</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{data.shape[0]:,}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Rows", f"{data.shape[0]:,}"), unsafe_allow_html=True)
 with col2:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Columns</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{data.shape[1]}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Columns", f"{data.shape[1]}"), unsafe_allow_html=True)
 with col3:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Missing Values</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{data.isna().sum().sum():,}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Missing Values", f"{data.isna().sum().sum():,}"), unsafe_allow_html=True)
 
 # Detect column types
 column_types = detect_column_types(data)
@@ -106,20 +99,11 @@ datetime_columns = [col for col, type_ in column_types.items() if type_ == 'date
 # Display column type counts
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Numeric Columns</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{len(numeric_columns)}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Numeric Columns", f"{len(numeric_columns)}"), unsafe_allow_html=True)
 with col2:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Categorical Columns</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{len(categorical_columns)}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Categorical Columns", f"{len(categorical_columns)}"), unsafe_allow_html=True)
 with col3:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Datetime Columns</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{len(datetime_columns)}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Datetime Columns", f"{len(datetime_columns)}"), unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 

@@ -1273,6 +1273,7 @@ st.set_page_config(
 
 # Apply the CSS from config
 st.markdown(Config.get_css(), unsafe_allow_html=True)
+st.markdown(Config.stepper(3), unsafe_allow_html=True)
 
 # Additional CSS for better styling
 st.markdown("""
@@ -1356,11 +1357,12 @@ if 'data' not in st.session_state:
     st.session_state.data = None
 
 if st.session_state.data is None:
-    st.markdown('<div class="card" style="text-align: center; padding: 3rem;">', unsafe_allow_html=True)
-    st.warning("No data loaded. Please upload a dataset first.")
+    st.markdown(Config.empty_state(
+        "No data loaded yet",
+        "Upload a CSV or Excel file to begin — or load the bundled sample dataset from the Upload page."),
+        unsafe_allow_html=True)
     if st.button('Go to Data Upload', use_container_width=True):
         st.switch_page("pages/1_upload_data.py")
-    st.markdown('</div>', unsafe_allow_html=True)
 else:
     # Create tabs for different functionalities
     preprocess_tab, feature_tab, pipeline_tab = st.tabs(["Preprocessing", "Feature Engineering", "Pipeline Manager"])
@@ -1389,28 +1391,16 @@ else:
         # Dataset metrics
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.markdown('<span class="metric-label">Rows</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{st.session_state.data.shape[0]:,}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Rows", f"{st.session_state.data.shape[0]:,}"), unsafe_allow_html=True)
         with col2:
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.markdown('<span class="metric-label">Columns</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{st.session_state.data.shape[1]}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Columns", f"{st.session_state.data.shape[1]}"), unsafe_allow_html=True)
         with col3:
             missing_count = st.session_state.data.isna().sum().sum()
             missing_pct = round(missing_count / (st.session_state.data.shape[0] * st.session_state.data.shape[1]) * 100,
                                 2)
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.markdown('<span class="metric-label">Missing Values</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{missing_count:,}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Missing Values", f"{missing_count:,}"), unsafe_allow_html=True)
         with col4:
-            st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-            st.markdown('<span class="metric-label">Missing Percentage</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{missing_pct}%</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Missing Percentage", f"{missing_pct}%"), unsafe_allow_html=True)
 
         # Dataset preview
         with st.expander("View Dataset Preview", expanded=True):

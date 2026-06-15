@@ -28,6 +28,7 @@ st.set_page_config(
 
 # Apply CSS from config
 st.markdown(Config.get_css(), unsafe_allow_html=True)
+st.markdown(Config.stepper(6), unsafe_allow_html=True)
 
 # Initialize session state for models
 if 'classification_processor' not in st.session_state:
@@ -59,8 +60,11 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # Check if data exists
 if 'data' not in st.session_state or st.session_state.data is None:
-    st.warning("No data loaded. Please upload a dataset first.")
-    if st.button('Go to Data Upload'):
+    st.markdown(Config.empty_state(
+        "No data loaded yet",
+        "Upload a CSV or Excel file to begin — or load the bundled sample dataset from the Upload page."),
+        unsafe_allow_html=True)
+    if st.button('Go to Data Upload', use_container_width=True):
         st.switch_page("pages/1_upload_data.py")
     st.stop()
 

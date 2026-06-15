@@ -13,6 +13,7 @@ st.set_page_config(
 
 # Apply the CSS from config
 st.markdown(Config.get_css(), unsafe_allow_html=True)
+st.markdown(Config.stepper(2), unsafe_allow_html=True)
 
 # Additional CSS for search feature
 st.markdown("""
@@ -91,8 +92,11 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # Check if data exists
 if 'data' not in st.session_state or st.session_state.data is None:
-    st.warning("No data loaded. Please upload a dataset first.")
-    if st.button('Go to Data Upload'):
+    st.markdown(Config.empty_state(
+        "No data loaded yet",
+        "Upload a CSV or Excel file to begin — or load the bundled sample dataset from the Upload page."),
+        unsafe_allow_html=True)
+    if st.button('Go to Data Upload', use_container_width=True):
         st.switch_page("pages/1_upload_data.py")
     st.stop()
 
@@ -105,30 +109,18 @@ st.markdown('<div class="section-title">Dataset Overview</div>', unsafe_allow_ht
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Rows</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{quality_report["summary"]["row_count"]:,}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Rows", f'{quality_report["summary"]["row_count"]:,}'), unsafe_allow_html=True)
 
 with col2:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Columns</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{quality_report["summary"]["column_count"]}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(Config.metric_card("Columns", f'{quality_report["summary"]["column_count"]}'), unsafe_allow_html=True)
 
 with col3:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Duplicated Rows</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{quality_report["summary"]["duplicated_rows"]:,}</div>',
+    st.markdown(Config.metric_card("Duplicated Rows", f'{quality_report["summary"]["duplicated_rows"]:,}'),
                 unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with col4:
-    st.markdown('<div class="metric-container">', unsafe_allow_html=True)
-    st.markdown('<span class="metric-label">Memory Usage</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="metric-value">{quality_report["summary"]["memory_usage"]:.2f} MB</div>',
+    st.markdown(Config.metric_card("Memory Usage", f'{quality_report["summary"]["memory_usage"]:.2f} MB'),
                 unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 

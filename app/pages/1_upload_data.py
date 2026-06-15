@@ -14,6 +14,7 @@ st.set_page_config(
 
 # Apply CSS from config
 st.markdown(Config.get_css(), unsafe_allow_html=True)
+st.markdown(Config.stepper(1), unsafe_allow_html=True)
 
 # Function to read and process uploaded files
 def read_file(uploaded_file):
@@ -171,31 +172,15 @@ if st.session_state.data is not None:
             categorical_columns = st.session_state.data.select_dtypes(include=['object', 'category']).columns
             numerical_columns = st.session_state.data.select_dtypes(include=['number']).columns
 
-            st.markdown('<span class="metric-label">Rows</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{num_rows:,}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown('<span class="metric-label">Columns</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{num_columns}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown('<span class="metric-label">Missing Values</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{missing_values:,}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Rows", f"{num_rows:,}"), unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Columns", f"{num_columns}"), unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Missing Values", f"{missing_values:,}"), unsafe_allow_html=True)
 
         with col2:
-            st.markdown('<span class="metric-label">Categorical Features</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{len(categorical_columns)}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown('<span class="metric-label">Numerical Features</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="metric-value">{len(numerical_columns)}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown('<span class="metric-label">Data completeness</span>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Categorical Features", f"{len(categorical_columns)}"), unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Numerical Features", f"{len(numerical_columns)}"), unsafe_allow_html=True)
             quality_score = 100 - min(100, (missing_values / (num_rows * num_columns) * 100 if num_rows * num_columns > 0 else 0))
-            st.markdown(f'<div class="metric-value">{quality_score:.2f}%</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(Config.metric_card("Data completeness", f"{quality_score:.2f}%"), unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 

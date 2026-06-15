@@ -13,6 +13,7 @@ st.set_page_config(
 
 # Apply the CSS from config
 st.markdown(Config.get_css(), unsafe_allow_html=True)
+st.markdown(Config.stepper(5), unsafe_allow_html=True)
 
 # Page header with back navigation
 st.markdown('<div class="page-header">', unsafe_allow_html=True)
@@ -28,11 +29,12 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # Check for data
 if 'data' not in st.session_state or st.session_state.data is None:
-    st.markdown('<div class="card" style="text-align: center; padding: 3rem;">', unsafe_allow_html=True)
-    st.warning("No data loaded. Please upload a dataset first.")
+    st.markdown(Config.empty_state(
+        "No data loaded yet",
+        "Upload a CSV or Excel file to begin — or load the bundled sample dataset from the Upload page."),
+        unsafe_allow_html=True)
     if st.button('Go to Data Upload', use_container_width=True):
         st.switch_page("pages/1_upload_data.py")
-    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # Main dashboard content card
