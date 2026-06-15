@@ -9,6 +9,7 @@ from config import Config, Paths
 st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
+    page_icon="📊",
     page_title="Data Upload"
 )
 

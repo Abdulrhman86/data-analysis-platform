@@ -44,6 +44,7 @@ def get_optimized_dataset(df, max_rows=MAX_SAMPLE_SIZE):
 st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
+    page_icon="📊",
     page_title="Data Visualization"
 )
 

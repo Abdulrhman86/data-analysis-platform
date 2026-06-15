@@ -1268,6 +1268,7 @@ def process_datetime_column(st, df, selected_column, datetime_processor):
 st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
+    page_icon="📊",
     page_title="Data Preprocessing"
 )
 

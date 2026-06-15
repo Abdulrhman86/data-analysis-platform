@@ -353,6 +353,27 @@ class Config:
         .empty-state .es-icon { font-size: 2.4rem; margin-bottom: var(--space-3); display: block; }
         .empty-state .es-title { color: var(--text); font-weight: 600; font-size: 1.1rem; margin-bottom: var(--space-2); font-family: var(--font-display); }
 
+        /* ============ U5: POLISH & A11Y ============ */
+        /* keyboard focus rings (only on keyboard nav, not mouse clicks) */
+        button[data-testid^="stBaseButton"]:focus-visible,
+        [data-testid="stSidebarNavLink"]:focus-visible,
+        .stTabs button[data-baseweb="tab"]:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--primary) !important;
+            outline-offset: 3px;
+            border-radius: var(--radius-sm);
+        }
+        html { scroll-behavior: smooth; }
+        ::selection { background: rgba(99, 102, 241, 0.38); color: #fff; }
+        /* themed scrollbar */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+        * { scrollbar-color: var(--surface-2) transparent; }
+        /* success state eases in */
+        .stSuccess { animation: fadeInUp 0.4s var(--ease) both; }
+
         /* accessibility: honor reduced-motion — neutralize all motion */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {

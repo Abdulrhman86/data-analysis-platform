@@ -23,6 +23,7 @@ from utils.feature_selection import select_k_best_features, select_features_with
 st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
+    page_icon="📊",
     page_title="Machine Learning Models"
 )
 
