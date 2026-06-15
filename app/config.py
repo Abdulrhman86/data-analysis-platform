@@ -116,6 +116,9 @@ class Config:
             -webkit-backdrop-filter: blur(14px) saturate(140%);
             box-shadow: var(--shadow-md);
         }
+        /* hide orphan empty wrappers — Streamlit renders a markdown <div class="card">
+           as a standalone empty node instead of wrapping the widgets that follow it. */
+        .card:empty, .content-area:empty, .metric-container:empty { display: none !important; }
         .section-title { font-size: 1.2rem; font-weight: 600; color: var(--text); margin-bottom: var(--space-4); }
         .page-header {
             padding: var(--space-3) 0 var(--space-4);
@@ -125,23 +128,29 @@ class Config:
         }
 
         /* ============ BUTTONS (gradient + hover lift + glow) ============ */
-        div.stButton > button, div.stDownloadButton > button {
-            background: var(--accent-grad);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 0.55rem 1.3rem;
-            font-weight: 600;
-            font-family: var(--font-body);
+        /* target the button's own data-testid — robust against tooltip/wrapper divs
+           that break a `div.stButton > button` direct-child selector. */
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]) {
+            background: var(--accent-grad) !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: var(--radius-md) !important;
+            padding: 0.55rem 1.3rem !important;
+            font-weight: 600 !important;
+            font-family: var(--font-body) !important;
             box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
             transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), filter var(--dur) var(--ease);
         }
-        div.stButton > button:hover, div.stDownloadButton > button:hover {
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]):hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 30px rgba(99, 102, 241, 0.5), var(--glow);
             filter: brightness(1.07);
         }
-        div.stButton > button:active, div.stDownloadButton > button:active { transform: translateY(0); }
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]):active { transform: translateY(0); }
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]):disabled,
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]):disabled:hover {
+            opacity: 0.45 !important; filter: grayscale(0.4); box-shadow: none; transform: none;
+        }
 
         /* ============ METRIC CARDS ============ */
         .metric-container {
@@ -161,11 +170,95 @@ class Config:
         .checkbox-item { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); color: var(--text); }
         .green-check { color: var(--success); }
 
-        /* ============ ALERTS (base; refined in U1) ============ */
-        .stSuccess, .stInfo, .stWarning, .stError {
+        /* ============ U1: WIDGETS ============ */
+
+        /* text / number / textarea inputs */
+        .stTextInput input, .stNumberInput input, .stTextArea textarea, .stDateInput input {
+            background: var(--surface) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border) !important;
             border-radius: var(--radius-md) !important;
-            backdrop-filter: blur(8px);
+            transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
         }
+        .stTextInput input:focus, .stNumberInput input:focus, .stTextArea textarea:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+        }
+        .stTextInput input::placeholder, .stTextArea textarea::placeholder { color: var(--text-faint) !important; }
+
+        /* selectbox / multiselect */
+        .stSelectbox div[data-baseweb="select"] > div,
+        .stMultiSelect div[data-baseweb="select"] > div {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius-md) !important;
+            transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+        }
+        .stSelectbox div[data-baseweb="select"] > div:focus-within,
+        .stMultiSelect div[data-baseweb="select"] > div:focus-within {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+        }
+        ul[data-baseweb="menu"], div[data-baseweb="popover"] ul {
+            background: #131a2e !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: var(--radius-md) !important;
+        }
+
+        /* tabs: gradient active underline */
+        .stTabs [data-baseweb="tab-list"] { gap: var(--space-3); border-bottom: 1px solid var(--border); }
+        .stTabs button[data-baseweb="tab"] { color: var(--text-dim); font-weight: 600; transition: color var(--dur) var(--ease); }
+        .stTabs button[data-baseweb="tab"]:hover { color: var(--text); }
+        .stTabs button[data-baseweb="tab"][aria-selected="true"] { color: var(--text); }
+        .stTabs [data-baseweb="tab-highlight"] { background: var(--accent-grad) !important; height: 3px !important; border-radius: 3px; }
+        .stTabs [data-baseweb="tab-border"] { background: var(--border) !important; }
+
+        /* slider thumb glow */
+        .stSlider [role="slider"] { box-shadow: var(--glow) !important; }
+
+        /* expander glass */
+        details[data-testid="stExpander"], .stExpander details {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius-md) !important;
+            overflow: hidden;
+        }
+        .stExpander summary:hover { background: var(--surface-2) !important; }
+
+        /* alerts as coloured glass */
+        .stAlert, div[data-testid="stAlert"] {
+            border-radius: var(--radius-md) !important;
+            border: 1px solid var(--border) !important;
+            backdrop-filter: blur(10px);
+        }
+        .stSuccess { border-left: 3px solid var(--success) !important; }
+        .stInfo { border-left: 3px solid var(--primary) !important; }
+        .stWarning { border-left: 3px solid var(--warning) !important; }
+        .stError { border-left: 3px solid var(--error) !important; }
+
+        /* file-drop zone: glow on hover */
+        [data-testid="stFileUploaderDropzone"] {
+            background: var(--surface) !important;
+            border: 1.5px dashed var(--border-strong) !important;
+            border-radius: var(--radius-lg) !important;
+            transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background var(--dur) var(--ease);
+        }
+        [data-testid="stFileUploaderDropzone"]:hover {
+            border-color: var(--primary) !important;
+            background: var(--surface-2) !important;
+            box-shadow: var(--glow);
+        }
+
+        /* dataframe / table */
+        [data-testid="stDataFrame"], [data-testid="stTable"] {
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius-md) !important;
+            overflow: hidden;
+        }
+
+        /* caption + inline code */
+        [data-testid="stCaptionContainer"] { color: var(--text-faint) !important; }
+        code { background: var(--surface) !important; border: 1px solid var(--border); border-radius: 6px; padding: 0.1em 0.4em; }
         </style>
         """
 
