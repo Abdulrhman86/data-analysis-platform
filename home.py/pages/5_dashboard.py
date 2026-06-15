@@ -27,7 +27,7 @@ with col2:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Check for data
-if 'data' not in st.session_state:
+if 'data' not in st.session_state or st.session_state.data is None:
     st.markdown('<div class="card" style="text-align: center; padding: 3rem;">', unsafe_allow_html=True)
     st.warning("No data loaded. Please upload a dataset first.")
     if st.button('Go to Data Upload', use_container_width=True):

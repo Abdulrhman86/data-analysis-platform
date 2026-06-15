@@ -1,4 +1,4 @@
-# 7_machine_learning.py
+# 6_machine_learning.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -51,14 +51,14 @@ col1, col2 = st.columns([1, 20])
 with col1:
     st.markdown('<div style="text-align: left;">', unsafe_allow_html=True)
     if st.button('← ', key='back_button', help="Return to previous page"):
-        st.switch_page("pages/6_dashboard.py")
+        st.switch_page("pages/5_dashboard.py")
     st.markdown('</div>', unsafe_allow_html=True)
 with col2:
     st.markdown('<h2 style="margin: 0; color: white;">Machine Learning Models</h2>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Check if data exists
-if 'data' not in st.session_state:
+if 'data' not in st.session_state or st.session_state.data is None:
     st.warning("No data loaded. Please upload a dataset first.")
     if st.button('Go to Data Upload'):
         st.switch_page("pages/1_upload_data.py")

@@ -1,7 +1,8 @@
 import pandas as pd
+import streamlit as st
 
 
-
+@st.cache_data(show_spinner="Assessing data quality...")
 def enhanced_data_quality(df):
     """
     Comprehensive data quality assessment with preprocessing recommendations

@@ -89,7 +89,7 @@ with col2:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Check if data exists
-if 'data' not in st.session_state:
+if 'data' not in st.session_state or st.session_state.data is None:
     st.warning("No data loaded. Please upload a dataset first.")
     if st.button('Go to Data Upload'):
         st.switch_page("pages/1_upload_data.py")

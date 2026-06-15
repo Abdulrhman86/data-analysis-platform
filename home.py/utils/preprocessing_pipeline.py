@@ -664,27 +664,41 @@ def pipeline_manager_ui(st, df, processors):
                         st.success(f"Removed step {step_to_remove}")
                         st.rerun()
 
-            # Apply pipeline
+            # Apply pipeline — the column-mapping preference is read OUTSIDE the
+            # button so it persists across reruns.
+            auto_map = st.checkbox(
+                "Automatically map columns if needed", value=True, key="pipeline_auto_map"
+            )
+
             if st.button("Apply Pipeline to Data"):
                 try:
                     with st.spinner("Applying pipeline..."):
-                        # Ask about column mapping
-                        auto_map = st.checkbox("Automatically map columns if needed", value=True)
                         column_map = None if auto_map else {}
-
                         result_df = pipeline.apply(df, processors, column_map)
-
-                    # Show preview
-                    st.success(f"Pipeline applied successfully.")
-                    st.write("### Preview of Transformed Data")
-                    st.dataframe(result_df.head(10), use_container_width=True)
-
-                    # Option to replace session data
-                    if st.button("Confirm and Replace Current Data"):
-                        return result_df
-
+                    # Stage the result in session_state so the confirm step survives
+                    # the rerun that clicking the confirm button triggers.
+                    st.session_state["pipeline_apply_result"] = result_df
                 except Exception as e:
+                    st.session_state.pop("pipeline_apply_result", None)
                     st.error(f"Error applying pipeline: {str(e)}")
+
+            # Preview + confirm are rendered OUTSIDE the apply-button block so that
+            # "Confirm and Replace" is reachable on the following rerun.
+            staged_result = st.session_state.get("pipeline_apply_result")
+            if staged_result is not None:
+                st.success("Pipeline applied successfully.")
+                st.write("### Preview of Transformed Data")
+                st.dataframe(staged_result.head(10), use_container_width=True)
+
+                confirm_col, cancel_col = st.columns(2)
+                with confirm_col:
+                    if st.button("Confirm and Replace Current Data"):
+                        st.session_state.pop("pipeline_apply_result", None)
+                        return staged_result
+                with cancel_col:
+                    if st.button("Cancel"):
+                        st.session_state.pop("pipeline_apply_result", None)
+                        st.rerun()
 
     with step_config_tab:
         # Edit step configuration
@@ -893,8 +907,8 @@ def pipeline_manager_ui(st, df, processors):
             except Exception as e:
                 st.error(f"Error importing pipeline from file: {str(e)}")
 
-    # Return the transformed DataFrame if processed
-    return result_df
+    # No transformed DataFrame to return unless the user confirmed above.
+    return None
 
 
 def record_preprocessing_step(processor_type, function_name, params, description=None):

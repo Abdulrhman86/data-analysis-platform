@@ -1,0 +1,19 @@
+# Data Analysis Platform — Python 3.11
+# Tested-compatible pinned versions.
+
+streamlit==1.39.0
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.1
+scipy==1.13.1
+plotly==5.22.0
+matplotlib==3.9.2
+seaborn==0.13.2
+
+# Excel I/O
+openpyxl==3.1.5
+xlrd==2.0.1
+
+# Model (de)serialization & images
+joblib==1.4.2
+Pillow==10.4.0
