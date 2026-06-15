@@ -62,3 +62,13 @@ def test_new_regression_models():
     for mdl in ["Elastic Net", "K-Nearest Neighbors", "Gradient Boosting"]:
         reg.train_model(mdl, s["X_train"], s["y_train"])
         assert "r2" in reg.evaluate_model(mdl, s["X_test"], s["y_test"])
+
+
+def test_predict_on_new_dataframe(clf_data):
+    """The 'Predict' tab scores new raw data via the fitted pipeline."""
+    clf, s = clf_data
+    clf.train_model("Gradient Boosting", s["X_train"], s["y_train"])
+    model = clf.get_fitted("Gradient Boosting")
+    new = pd.DataFrame({"age": [25, 60], "income": [40000.0, 70000.0], "city": ["NY", "LA"]})
+    preds = model.predict(new[["age", "income", "city"]])
+    assert len(preds) == 2

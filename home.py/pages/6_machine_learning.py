@@ -68,8 +68,8 @@ if 'data' not in st.session_state or st.session_state.data is None:
 data = st.session_state.data
 
 # Create main tabs
-data_prep_tab, model_tab, evaluation_tab, export_tab = st.tabs([
-    "Data Preparation", "Model Training", "Model Evaluation", "Export Model"
+data_prep_tab, model_tab, evaluation_tab, predict_tab, export_tab = st.tabs([
+    "Data Preparation", "Model Training", "Model Evaluation", "Predict", "Export Model"
 ])
 
 with data_prep_tab:
@@ -1264,6 +1264,53 @@ with evaluation_tab:
                         st.success(f"Best model based on {selected_metric}: {best_model} ({best_value:.4f})")
                     else:
                         st.info("Train multiple models to compare their performance.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with predict_tab:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Predict on New Data</div>', unsafe_allow_html=True)
+
+    if not st.session_state.trained_models:
+        st.warning("No models trained yet. Train a model first.")
+    else:
+        predict_model_name = st.selectbox(
+            "Model to use:", list(st.session_state.trained_models.keys()), key="predict_model_select"
+        )
+        st.caption("Upload a file with the same feature columns used for training. "
+                   "Missing values and categorical encoding are handled by the model's pipeline.")
+        new_file = st.file_uploader(
+            "Upload new data (CSV or Excel):", type=["csv", "xlsx", "xls"], key="predict_upload"
+        )
+
+        if new_file is not None and predict_model_name:
+            try:
+                if new_file.name.lower().endswith('.csv'):
+                    new_df = pd.read_csv(new_file)
+                else:
+                    new_df = pd.read_excel(new_file)
+                new_df.columns = new_df.columns.astype(str)
+
+                model = st.session_state.trained_models[predict_model_name]
+                features = st.session_state.get('feature_names', [])
+                missing = [c for c in features if c not in new_df.columns]
+                if missing:
+                    st.error(f"Uploaded data is missing required feature columns: {missing}")
+                else:
+                    X_new = new_df[features] if features else new_df
+                    predictions = model.predict(X_new)
+                    result = new_df.copy()
+                    result['prediction'] = predictions
+                    st.success(f"Generated {len(predictions)} predictions.")
+                    st.dataframe(result.head(20), use_container_width=True)
+                    st.download_button(
+                        "Download predictions (CSV)",
+                        data=result.to_csv(index=False).encode('utf-8'),
+                        file_name="predictions.csv",
+                        mime="text/csv"
+                    )
+            except Exception as e:
+                st.error(f"Could not generate predictions: {str(e)}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
