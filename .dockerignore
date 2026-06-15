@@ -1,0 +1,48 @@
+# Keep the Docker build context small and the image clean.
+
+# Virtual environments (huge, Windows-specific — must never enter the image)
+.venv/
+venv/
+env/
+ENV/
+
+# Version control & CI caches
+.git/
+.gitignore
+.pytest_cache/
+.cache/
+
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tests are not needed at runtime
+app/tests/
+
+# Runtime / generated data (regenerated inside the container)
+uploads/
+temp/
+app/uploads/
+app/temp/
+.app_data/
+
+# Docs, scripts, planning — not needed to run the app
+docs/
+scripts/
+*.md
+WORKPLAN.md
+DEPLOY.md
+requirements-dev.txt
+
+# Editor / OS cruft
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Don't recurse Docker files into the context
+Dockerfile
+.dockerignore
+docker-compose.yml

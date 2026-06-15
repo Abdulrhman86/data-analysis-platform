@@ -1,0 +1,19 @@
+# One-command local test:
+#   docker compose up --build
+# Then open http://localhost:8501
+# Stop with Ctrl+C, or:  docker compose down
+
+services:
+  app:
+    build: .
+    image: data-analysis-platform
+    container_name: data-analysis-platform
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
