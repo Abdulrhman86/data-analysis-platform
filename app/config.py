@@ -259,6 +259,83 @@ class Config:
         /* caption + inline code */
         [data-testid="stCaptionContainer"] { color: var(--text-faint) !important; }
         code { background: var(--surface) !important; border: 1px solid var(--border); border-radius: 6px; padding: 0.1em 0.4em; }
+
+        /* ============ U2: MOTION & MICRO-INTERACTIONS ============ */
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+        @keyframes aurora-drift {
+            0%   { transform: translate3d(0, 0, 0) scale(1); }
+            50%  { transform: translate3d(2.5%, 2%, 0) scale(1.08); }
+            100% { transform: translate3d(-2%, -1.5%, 0) scale(1.05); }
+        }
+        @keyframes btn-shine { from { left: -120%; } to { left: 150%; } }
+        @keyframes shimmer { from { background-position: -468px 0; } to { background-position: 468px 0; } }
+
+        /* animated aurora overlay — drifts slowly behind all content */
+        .stApp::before {
+            content: "";
+            position: fixed;
+            inset: -25%;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(620px 420px at 22% 18%, rgba(99, 102, 241, 0.13), transparent 60%),
+                radial-gradient(560px 380px at 78% 28%, rgba(139, 92, 246, 0.11), transparent 60%),
+                radial-gradient(520px 360px at 52% 82%, rgba(59, 130, 246, 0.10), transparent 60%);
+            filter: blur(28px);
+            animation: aurora-drift 26s var(--ease) infinite alternate;
+            will-change: transform;
+        }
+        /* keep real UI above the aurora layer */
+        [data-testid="stAppViewContainer"] { position: relative; z-index: 1; }
+
+        /* page entrance — top-level blocks cascade up (precise path targets only
+           top-level blocks, so React keeps them stable → no replay on rerun) */
+        [data-testid="stMainBlockContainer"] { animation: fadeIn 0.45s var(--ease) both; }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div {
+            animation: fadeInUp 0.5s var(--ease) both;
+        }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div:nth-child(1) { animation-delay: 0.03s; }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div:nth-child(2) { animation-delay: 0.07s; }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div:nth-child(3) { animation-delay: 0.11s; }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div:nth-child(4) { animation-delay: 0.15s; }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div:nth-child(5) { animation-delay: 0.19s; }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > div:nth-child(6) { animation-delay: 0.23s; }
+
+        /* button shine sweep on hover */
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]) { position: relative; overflow: hidden; }
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"])::after {
+            content: ""; position: absolute; top: 0; left: -120%; width: 55%; height: 100%;
+            background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+            transform: skewX(-18deg); pointer-events: none;
+        }
+        button[data-testid^="stBaseButton"]:not([data-testid*="header"]):hover::after { animation: btn-shine 0.85s var(--ease); }
+
+        /* card / metric hover micro-interactions */
+        .card, .metric-container { transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+        .card:not(:empty):hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: var(--shadow-lg), 0 0 22px rgba(99, 102, 241, 0.18); }
+        .metric-container:not(:empty):hover { transform: translateY(-2px); border-color: var(--border-strong); }
+
+        /* loading shimmer skeleton utility + spinner glow */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.10) 37%, rgba(255,255,255,0.04) 63%);
+            background-size: 936px 100%;
+            animation: shimmer 1.4s linear infinite;
+            border-radius: var(--radius-sm);
+            min-height: 1rem;
+        }
+        [data-testid="stSpinner"] svg { filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6)); }
+
+        /* accessibility: honor reduced-motion — neutralize all motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
         </style>
         """
 
