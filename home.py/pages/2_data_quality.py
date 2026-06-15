@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import html
 from utils.data_quality import enhanced_data_quality
 from config import Config
 
@@ -133,9 +134,20 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # Group recommendations by severity
 if quality_report['recommendations']:
-    high_priority = [rec for rec in quality_report['recommendations'] if rec['severity'] == 'high']
-    medium_priority = [rec for rec in quality_report['recommendations'] if rec['severity'] == 'medium']
-    low_priority = [rec for rec in quality_report['recommendations'] if rec['severity'] == 'low']
+    # Escape user-derived strings (column names, and descriptions that embed cell
+    # values) before they are rendered into raw HTML, to prevent XSS from a
+    # malicious column name or value. Build copies -- do NOT mutate the cached report.
+    recs = [
+        {
+            **r,
+            'column': html.escape(str(r['column'])) if r.get('column') is not None else None,
+            'description': html.escape(str(r.get('description', ''))),
+        }
+        for r in quality_report['recommendations']
+    ]
+    high_priority = [rec for rec in recs if rec['severity'] == 'high']
+    medium_priority = [rec for rec in recs if rec['severity'] == 'medium']
+    low_priority = [rec for rec in recs if rec['severity'] == 'low']
 
     # Recommendations card
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -147,7 +159,7 @@ if quality_report['recommendations']:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Get unique column names for autocomplete (excluding None values)
-    column_names = set(rec['column'] for rec in quality_report['recommendations'] if rec['column'] is not None)
+    column_names = set(rec['column'] for rec in recs if rec['column'] is not None)
 
     # Create filtered recommendations based on search
     if search_query:
@@ -156,7 +168,7 @@ if quality_report['recommendations']:
 
         # Filter recommendations containing the search term in column name
         search_results = [
-            rec for rec in quality_report['recommendations']
+            rec for rec in recs
             if rec['column'] and search_query_lower in rec['column'].lower()
         ]
 
@@ -171,7 +183,7 @@ if quality_report['recommendations']:
         with search_tab:
             if search_results:
                 st.markdown(
-                    f'<div class="search-results-count">Found {len(search_results)} recommendations for columns matching "{search_query}"</div>',
+                    f'<div class="search-results-count">Found {len(search_results)} recommendations for columns matching "{html.escape(search_query)}"</div>',
                     unsafe_allow_html=True)
 
                 # Group search results by severity for better organization
@@ -192,7 +204,7 @@ if quality_report['recommendations']:
             else:
                 st.markdown(f"""
                 <div class="no-results">
-                    No recommendations found for columns matching "{search_query}".
+                    No recommendations found for columns matching "{html.escape(search_query)}".
                 </div>
                 """, unsafe_allow_html=True)
 

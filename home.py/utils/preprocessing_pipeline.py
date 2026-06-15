@@ -58,6 +58,10 @@ def record_step(processor_type):
 
             return result
 
+        # Mark wrapped methods so pipeline replay can confirm a step's function
+        # is a real preprocessing transform (not an arbitrary method reached via
+        # a crafted/imported pipeline JSON).
+        wrapper._is_preprocessing_step = True
         return wrapper
 
     return decorator
@@ -112,6 +116,14 @@ class PreprocessingStep:
             raise ValueError(
                 f"Function '{self.function_name}' not found in {self.processor_type} processor. "
                 f"Available methods: {processor_methods[:10]}"
+            )
+
+        # Security: only allow functions explicitly marked as preprocessing steps
+        # (see @record_step). Prevents a crafted/imported pipeline JSON from
+        # invoking arbitrary processor methods during replay.
+        if not getattr(func, '_is_preprocessing_step', False):
+            raise ValueError(
+                f"Function '{self.function_name}' is not an allowed preprocessing step."
             )
 
         # Validate required columns exist

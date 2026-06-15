@@ -48,6 +48,9 @@ def load_model(filepath):
     """
     Load a model from disk
 
+    SECURITY: ``pickle.load`` executes arbitrary code while unpickling. Only load
+    model files you created or fully trust -- never an untrusted/uploaded file.
+
     Args:
         filepath: path to the saved model
 

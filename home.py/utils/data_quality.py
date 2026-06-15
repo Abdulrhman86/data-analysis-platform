@@ -28,6 +28,16 @@ def enhanced_data_quality(df):
         'recommendations': []
     }
 
+    # Guard against an empty dataset (avoids division-by-zero below).
+    if len(df) == 0:
+        quality['recommendations'].append({
+            'column': None,
+            'issue': 'empty_dataset',
+            'description': 'The dataset has no rows to analyze.',
+            'severity': 'high'
+        })
+        return quality
+
     # Detect column types
     numeric_cols = df.select_dtypes(include=['number']).columns
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns
@@ -62,11 +72,12 @@ def enhanced_data_quality(df):
             lower_bound = q1 - 1.5 * iqr
             upper_bound = q3 + 1.5 * iqr
             outliers = ((df[col] < lower_bound) | (df[col] > upper_bound)).sum()
+            non_null = df[col].count()
             col_data['outliers_count'] = outliers
-            col_data['outliers_percentage'] = round(outliers / df[col].count() * 100, 2)
+            col_data['outliers_percentage'] = round(outliers / non_null * 100, 2) if non_null else 0
 
             # Add recommendations
-            if outliers > 0 and outliers / df[col].count() > 0.05:
+            if non_null and outliers > 0 and outliers / non_null > 0.05:
                 quality['recommendations'].append({
                     'column': col,
                     'issue': 'outliers',
@@ -93,8 +104,9 @@ def enhanced_data_quality(df):
 
         elif col in categorical_cols:
             col_data['type'] = 'categorical'
-            col_data['most_common'] = df[col].value_counts().index[0] if not df[col].empty else None
-            col_data['most_common_count'] = df[col].value_counts().iloc[0] if not df[col].empty else 0
+            value_counts = df[col].value_counts()
+            col_data['most_common'] = value_counts.index[0] if len(value_counts) else None
+            col_data['most_common_count'] = value_counts.iloc[0] if len(value_counts) else 0
             col_data['most_common_percentage'] = round(col_data['most_common_count'] / len(df) * 100, 2)
 
             # Check for high cardinality
@@ -139,7 +151,7 @@ def enhanced_data_quality(df):
                         'description': f'Column contains date/time data. Consider converting to datetime format.',
                         'severity': 'medium'
                     })
-                except:
+                except Exception:
                     pass
 
         elif col in datetime_cols:

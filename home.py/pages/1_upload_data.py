@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import html
 from utils.preprocessing_utils import try_convert_date_columns
 from config import Config, Paths
 
@@ -72,7 +73,7 @@ def prepare_excel_datetime_columns(df):
                     if all(30000 < val < 50000 for val in sample):
                         # Convert to datetime using Excel's epoch
                         df[col] = pd.to_datetime(df[col], unit='D', origin='1899-12-30')
-            except:
+            except Exception:
                 pass
     return df
 
@@ -124,7 +125,7 @@ with col1:
 with col2:
     st.markdown('<p class="metric-label">Currently Selected</p>', unsafe_allow_html=True)
     if st.session_state.file_name:
-        st.markdown(f'<p class="metric-value">{st.session_state.file_name}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="metric-value">{html.escape(st.session_state.file_name)}</p>', unsafe_allow_html=True)
     else:
         st.markdown('<p style="color: #6B7280;">No file selected</p>', unsafe_allow_html=True)
 

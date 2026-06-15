@@ -247,13 +247,13 @@ def detect_column_types(df):
                         pd.to_datetime(df[col], errors='raise')
                         column_types[col] = 'datetime'
                         continue
-                    except:
+                    except Exception:
                         # Try with specific format for MM/DD/YYYY
                         try:
                             pd.to_datetime(df[col], format='%m/%d/%Y', errors='raise')
                             column_types[col] = 'datetime'
                             continue
-                        except:
+                        except Exception:
                             pass
 
             # Check if it might be a numeric column stored as string
@@ -262,7 +262,7 @@ def detect_column_types(df):
                     column_types[col] = 'numeric_as_string'
                 else:
                     column_types[col] = 'categorical'
-            except:
+            except Exception:
                 column_types[col] = 'categorical'
 
     return column_types

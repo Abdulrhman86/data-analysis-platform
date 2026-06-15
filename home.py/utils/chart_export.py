@@ -1,6 +1,8 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import io
+import json
+import re
 
 
 def export_chart(fig, chart_name="chart"):
@@ -88,7 +90,7 @@ def export_matplotlib_chart(fig_obj, chart_name="mpl_chart", dpi=100, width=None
         try:
             if 'fig' in locals():
                 plt.close(fig)
-        except:
+        except Exception:
             pass
         st.error(f"Error exporting Matplotlib chart: {str(e)}")
 
@@ -99,6 +101,10 @@ def _add_screenshot_capability(html_content, chart_name):
     With format selection (PNG, JPEG, WebP)
     Button placed at bottom of screen, not covering the chart
     """
+    # Sanitize the chart name before embedding it in the download JS, so a
+    # column-derived name cannot inject script into the exported HTML.
+    safe_name = re.sub(r'[^\w\-]', '_', str(chart_name)) or "chart"
+
     # JavaScript for screenshot functionality with format selection
     screenshot_js = """
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -265,7 +271,7 @@ def _add_screenshot_capability(html_content, chart_name):
         }).then(canvas => {
             // Create download link
             const link = document.createElement('a');
-            link.download = '""" + chart_name + """.' + format;
+            link.download = """ + json.dumps(safe_name) + """ + '.' + format;
 
             // Convert canvas to data URL with selected format
             if (format === 'png') {

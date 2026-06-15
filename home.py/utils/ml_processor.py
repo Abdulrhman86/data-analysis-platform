@@ -164,6 +164,11 @@ class MLProcessor:
             pickle.dump(self.get_fitted(model_name), f)
 
     def load_model(self, model_name, filepath):
-        """Load a fitted pipeline from disk and register it as trained."""
+        """Load a fitted pipeline from disk and register it as trained.
+
+        SECURITY: ``pickle.load`` executes arbitrary code while unpickling. Only
+        load model files you created or fully trust -- never an untrusted or
+        user-uploaded file.
+        """
         with open(filepath, 'rb') as f:
             self.fitted_models[model_name] = pickle.load(f)

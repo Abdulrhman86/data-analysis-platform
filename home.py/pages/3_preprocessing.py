@@ -1529,7 +1529,7 @@ else:
                 try:
                     pd.to_datetime(st.session_state.data[selected_column], errors='raise')
                     column_type = 'datetime'
-                except:
+                except Exception:
                     column_type = 'categorical'
 
             # Column info box

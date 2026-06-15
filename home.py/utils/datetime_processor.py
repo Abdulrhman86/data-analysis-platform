@@ -86,7 +86,7 @@ class DatetimeProcessor(DataProcessor):
             if not isinstance(value, pd.Timestamp):
                 try:
                     value = pd.to_datetime(value)
-                except:
+                except Exception:
                     raise ValueError(f"Could not convert '{value}' to datetime")
 
             # Apply the fill
@@ -154,7 +154,7 @@ class DatetimeProcessor(DataProcessor):
             # Try to convert custom value to datetime
             try:
                 return pd.to_datetime(custom_value)
-            except:
+            except Exception:
                 # If conversion fails, return current date
                 return pd.Timestamp.now()
 
