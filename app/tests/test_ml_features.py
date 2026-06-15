@@ -72,3 +72,12 @@ def test_predict_on_new_dataframe(clf_data):
     new = pd.DataFrame({"age": [25, 60], "income": [40000.0, 70000.0], "city": ["NY", "LA"]})
     preds = model.predict(new[["age", "income", "city"]])
     assert len(preds) == 2
+
+
+def test_class_weight_balanced_default():
+    clf = ClassificationProcessor()
+    for name in ["Logistic Regression", "Decision Tree", "Random Forest", "SVM", "Gradient Boosting"]:
+        assert clf.models[name].get_params().get("class_weight") == "balanced"
+    # KNN and Naive Bayes have no class_weight param and are left untouched
+    assert "class_weight" not in clf.models["K-Nearest Neighbors"].get_params()
+    assert "class_weight" not in clf.models["Naive Bayes"].get_params()

@@ -88,6 +88,13 @@ class ClassificationProcessor(MLProcessor):
             {"learning_rate": 0.1, "max_depth": None}
         )
 
+        # Default to balanced class weights for models that support it, so an
+        # imbalanced target doesn't collapse to predicting the majority class.
+        # (KNN and Naive Bayes have no class_weight and are left untouched.)
+        for model in self.models.values():
+            if "class_weight" in model.get_params():
+                model.set_params(class_weight="balanced")
+
     def get_param_grid(self, model_name):
         """Small hyperparameter grids used by tune_model."""
         grids = {
@@ -128,6 +135,10 @@ class ClassificationProcessor(MLProcessor):
             model = HistGradientBoostingClassifier(random_state=42, **parameters)
         else:
             raise ValueError(f"Unsupported model: {model_name}")
+
+        # Keep balanced class weights when the model supports it.
+        if "class_weight" in model.get_params():
+            model.set_params(class_weight="balanced")
 
         # Update model registry
         self.register_model(model_name, model, parameters)

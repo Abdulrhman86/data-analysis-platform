@@ -50,7 +50,7 @@ def build_pie(df, config):
 
 def build_histogram(df, config):
     return px.histogram(df, x=config.get("x"), color=config.get("color"),
-                        nbins=config.get("bins", 20),
+                        nbins=config.get("bins", 20), opacity=config.get("opacity"),
                         title=config.get("title"), height=config.get("height"))
 
 

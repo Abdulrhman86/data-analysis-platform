@@ -6,6 +6,7 @@ import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.chart_export import export_chart, export_matplotlib_chart
+from utils import charts
 
 
 def display_numeric_variable(viz_data, selected_column, chart_type):
@@ -20,14 +21,10 @@ def display_numeric_variable(viz_data, selected_column, chart_type):
     if chart_type == "Histogram":
         bins = st.slider("Number of bins:", 5, 100, 20, key="histogram_bins")
 
-        fig = px.histogram(
-            viz_data,
-            x=selected_column,
-            nbins=bins,
-            title=f"Histogram of {selected_column}",
-            opacity=0.7
-        )
-        fig.update_layout(height=500)
+        fig = charts.build_histogram(viz_data, {
+            "x": selected_column, "bins": bins, "opacity": 0.7,
+            "title": f"Histogram of {selected_column}", "height": 500,
+        })
         st.plotly_chart(fig, use_container_width=True)
 
         # Add descriptive stats
@@ -38,12 +35,9 @@ def display_numeric_variable(viz_data, selected_column, chart_type):
         return fig, f"histogram_{selected_column}"
 
     elif chart_type == "Box Plot":
-        fig = px.box(
-            viz_data,
-            y=selected_column,
-            title=f"Box Plot of {selected_column}"
-        )
-        fig.update_layout(height=500)
+        fig = charts.build_box(viz_data, {
+            "y": selected_column, "title": f"Box Plot of {selected_column}", "height": 500,
+        })
         st.plotly_chart(fig, use_container_width=True)
 
         # Show potential outliers
@@ -61,14 +55,9 @@ def display_numeric_variable(viz_data, selected_column, chart_type):
         return fig, f"boxplot_{selected_column}"
 
     elif chart_type == "Violin Plot":
-        fig = px.violin(
-            viz_data,
-            y=selected_column,
-            box=True,
-            points="all",
-            title=f"Violin Plot of {selected_column}"
-        )
-        fig.update_layout(height=500)
+        fig = charts.build_violin(viz_data, {
+            "y": selected_column, "title": f"Violin Plot of {selected_column}", "height": 500,
+        })
         st.plotly_chart(fig, use_container_width=True)
 
         return fig, f"violin_{selected_column}"
