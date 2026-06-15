@@ -12,6 +12,7 @@ from utils.ml_processor import MLProcessor
 
 class ClassificationProcessor(MLProcessor):
     """Class for classification model processing"""
+    task_type = 'classification'
 
     def __init__(self):
         super().__init__()
@@ -112,10 +113,7 @@ class ClassificationProcessor(MLProcessor):
         Returns:
             dict: evaluation metrics
         """
-        if model_name not in self.models:
-            raise ValueError(f"Model '{model_name}' not registered")
-
-        model = self.models[model_name]
+        model = self.get_fitted(model_name)
 
         # Make predictions
         y_pred = model.predict(X_test)
@@ -123,20 +121,22 @@ class ClassificationProcessor(MLProcessor):
         # For ROC AUC, we need probability predictions
         try:
             y_proba = model.predict_proba(X_test)
-            # For multi-class, use one-vs-rest approach
+            classes = model.classes_
+            # For multi-class, use one-vs-rest with an explicit class order so the
+            # probability columns line up with the true labels.
             if y_proba.shape[1] > 2:
-                roc_auc = roc_auc_score(pd.get_dummies(y_test), y_proba, multi_class='ovr')
+                roc_auc = roc_auc_score(y_test, y_proba, multi_class='ovr', labels=classes)
             else:
                 roc_auc = roc_auc_score(y_test, y_proba[:, 1])
-        except:
+        except Exception:
             roc_auc = None
 
         # Calculate metrics
         metrics = {
             'accuracy': accuracy_score(y_test, y_pred),
-            'precision': precision_score(y_test, y_pred, average='weighted'),
-            'recall': recall_score(y_test, y_pred, average='weighted'),
-            'f1': f1_score(y_test, y_pred, average='weighted'),
+            'precision': precision_score(y_test, y_pred, average='weighted', zero_division=0),
+            'recall': recall_score(y_test, y_pred, average='weighted', zero_division=0),
+            'f1': f1_score(y_test, y_pred, average='weighted', zero_division=0),
             'roc_auc': roc_auc,
             'confusion_matrix': confusion_matrix(y_test, y_pred)
         }
@@ -146,32 +146,36 @@ class ClassificationProcessor(MLProcessor):
 
         return metrics
 
-    def get_feature_importance(self, model_name, feature_names):
+    def get_feature_importance(self, model_name, feature_names=None):
         """
-        Get feature importance for a model (if available)
+        Get feature importance for a trained model (if available)
 
         Args:
-            model_name: name of the registered model
-            feature_names: list of feature names
+            model_name: name of the trained model
+            feature_names: fallback names (the encoded names from the fitted
+                preprocessor are used when available)
 
         Returns:
             pd.Series: feature importance values
         """
-        if model_name not in self.models:
-            raise ValueError(f"Model '{model_name}' not registered")
+        pipeline = self.get_fitted(model_name)
+        estimator = pipeline.named_steps['model']
 
-        model = self.models[model_name]
+        # After encoding, the real feature names come from the preprocessor.
+        try:
+            names = pipeline.named_steps['preprocess'].get_feature_names_out()
+        except Exception:
+            names = feature_names
 
-        # Check if model has feature importance attribute
-        if hasattr(model, 'feature_importances_'):
-            return pd.Series(model.feature_importances_, index=feature_names).sort_values(ascending=False)
-        elif hasattr(model, 'coef_'):
-            # For linear models with coefficients
-            if len(model.coef_.shape) > 1:
+        if hasattr(estimator, 'feature_importances_'):
+            return pd.Series(estimator.feature_importances_, index=names).sort_values(ascending=False)
+        elif hasattr(estimator, 'coef_'):
+            coef = estimator.coef_
+            if getattr(coef, 'ndim', 1) > 1:
                 # For multi-class, take the mean absolute coefficient
-                importance = np.mean(np.abs(model.coef_), axis=0)
+                importance = np.mean(np.abs(coef), axis=0)
             else:
-                importance = np.abs(model.coef_)
-            return pd.Series(importance, index=feature_names).sort_values(ascending=False)
+                importance = np.abs(coef)
+            return pd.Series(importance, index=names).sort_values(ascending=False)
         else:
             return None

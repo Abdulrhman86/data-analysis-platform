@@ -1,12 +1,22 @@
 # utils/model_export.py
 import pickle
-import joblib
 import os
 import base64
 import zipfile
 import io
 import json
-import streamlit as st
+import numpy as np
+
+
+def _json_default(obj):
+    """Fallback serializer so numpy types/arrays in metadata are JSON-safe."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    return str(obj)
 
 
 def save_model(model, model_name, directory='models'):
@@ -73,7 +83,7 @@ def create_download_link(model, model_name, metadata=None):
 
         # Save metadata if provided
         if metadata:
-            zf.writestr('metadata.json', json.dumps(metadata, indent=2))
+            zf.writestr('metadata.json', json.dumps(metadata, indent=2, default=_json_default))
 
     # Create download link
     b64 = base64.b64encode(zip_buffer.getvalue()).decode()
@@ -95,6 +105,8 @@ def create_streamlit_download_button(model, model_name, metadata=None):
     Returns:
         None (displays a download button)
     """
+    import streamlit as st
+
     # Create a zip file in memory
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -106,7 +118,7 @@ def create_streamlit_download_button(model, model_name, metadata=None):
 
         # Save metadata if provided
         if metadata:
-            zf.writestr('metadata.json', json.dumps(metadata, indent=2))
+            zf.writestr('metadata.json', json.dumps(metadata, indent=2, default=_json_default))
 
     # Create download button
     zip_buffer.seek(0)
@@ -143,11 +155,11 @@ def export_full_pipeline(models, data_info, preprocessing_steps=None):
             zf.writestr(f'models/{model_name.replace(" ", "_").lower()}.pkl', model_buffer.read())
 
         # Save data info
-        zf.writestr('data_info.json', json.dumps(data_info, indent=2))
+        zf.writestr('data_info.json', json.dumps(data_info, indent=2, default=_json_default))
 
         # Save preprocessing steps if provided
         if preprocessing_steps:
-            zf.writestr('preprocessing_steps.json', json.dumps(preprocessing_steps, indent=2))
+            zf.writestr('preprocessing_steps.json', json.dumps(preprocessing_steps, indent=2, default=_json_default))
 
     zip_buffer.seek(0)
     return zip_buffer

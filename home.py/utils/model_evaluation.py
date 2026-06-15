@@ -2,9 +2,8 @@
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.metrics import roc_curve, auc, precision_recall_curve
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 from sklearn.model_selection import learning_curve
-import streamlit as st
 
 
 def get_classification_report(model, X_test, y_test, as_dataframe=True):
@@ -104,7 +103,7 @@ def get_precision_recall_curve_data(model, X_test, y_test):
 
     # Calculate precision-recall curve
     precision, recall, thresholds = precision_recall_curve(y_test, y_proba)
-    avg_precision = np.mean(precision)
+    avg_precision = average_precision_score(y_test, y_proba)
 
     return {
         'precision': precision,

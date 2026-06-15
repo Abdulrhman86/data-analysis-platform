@@ -10,6 +10,7 @@ from utils.ml_processor import MLProcessor
 
 class RegressionProcessor(MLProcessor):
     """Class for regression model processing"""
+    task_type = 'regression'
 
     def __init__(self):
         super().__init__()
@@ -105,10 +106,7 @@ class RegressionProcessor(MLProcessor):
         Returns:
             dict: evaluation metrics
         """
-        if model_name not in self.models:
-            raise ValueError(f"Model '{model_name}' not registered")
-
-        model = self.models[model_name]
+        model = self.get_fitted(model_name)
 
         # Make predictions
         y_pred = model.predict(X_test)
@@ -136,27 +134,35 @@ class RegressionProcessor(MLProcessor):
 
         return metrics
 
-    def get_feature_importance(self, model_name, feature_names):
+    def get_feature_importance(self, model_name, feature_names=None):
         """
-        Get feature importance for a model (if available)
+        Get feature importance for a trained model (if available)
 
         Args:
-            model_name: name of the registered model
-            feature_names: list of feature names
+            model_name: name of the trained model
+            feature_names: fallback names (the encoded names from the fitted
+                preprocessor are used when available)
 
         Returns:
             pd.Series: feature importance values
         """
-        if model_name not in self.models:
-            raise ValueError(f"Model '{model_name}' not registered")
+        pipeline = self.get_fitted(model_name)
+        estimator = pipeline.named_steps['model']
 
-        model = self.models[model_name]
+        # After encoding, the real feature names come from the preprocessor.
+        try:
+            names = pipeline.named_steps['preprocess'].get_feature_names_out()
+        except Exception:
+            names = feature_names
 
-        # Check if model has feature importance attribute
-        if hasattr(model, 'feature_importances_'):
-            return pd.Series(model.feature_importances_, index=feature_names).sort_values(ascending=False)
-        elif hasattr(model, 'coef_'):
-            # For linear models with coefficients
-            return pd.Series(np.abs(model.coef_), index=feature_names).sort_values(ascending=False)
+        if hasattr(estimator, 'feature_importances_'):
+            return pd.Series(estimator.feature_importances_, index=names).sort_values(ascending=False)
+        elif hasattr(estimator, 'coef_'):
+            coef = estimator.coef_
+            if getattr(coef, 'ndim', 1) > 1:
+                importance = np.mean(np.abs(coef), axis=0)
+            else:
+                importance = np.abs(coef)
+            return pd.Series(importance, index=names).sort_values(ascending=False)
         else:
             return None

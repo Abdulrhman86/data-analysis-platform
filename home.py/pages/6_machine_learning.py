@@ -406,22 +406,17 @@ with data_prep_tab:
                             st.info(f"Removed {rows_removed} rows with missing values.")
 
                     elif st.session_state.missing_handling == "impute":
-                        # Fill missing values based on task type
-                        for col in selected_features:
-                            if prep_data[col].isna().any():
-                                if st.session_state.current_task == "regression" and col in numerical_features:
-                                    # For regression, fill numeric columns with mean
-                                    fill_value = prep_data[col].mean()
-                                    prep_data[col] = prep_data[col].fillna(fill_value)
-                                    st.info(f"Filled missing values in '{col}' with mean: {fill_value:.4f}")
-                                else:
-                                    # For classification or non-numeric columns, fill with mode
-                                    fill_value = prep_data[col].mode().iloc[0] if not prep_data[
-                                        col].mode().empty else "UNKNOWN"
-                                    prep_data[col] = prep_data[col].fillna(fill_value)
-                                    st.info(f"Filled missing values in '{col}' with mode: {fill_value}")
+                        # Feature missing values are imputed INSIDE the training
+                        # pipeline (median for numeric, most-frequent for
+                        # categorical), fit on the training split only -- so we do
+                        # not impute features here, which would leak test info.
+                        st.info(
+                            "Missing feature values will be imputed during training "
+                            "(fit on the training split only -- no data leakage)."
+                        )
 
-                        # Handle missing values in target
+                        # The target cannot be imputed by the feature pipeline, so
+                        # handle it here.
                         if prep_data[target_column].isna().any():
                             if st.session_state.current_task == "regression":
                                 fill_value = prep_data[target_column].mean()
