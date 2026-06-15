@@ -15,7 +15,8 @@ st.markdown(Config.get_css(), unsafe_allow_html=True)
 # Header section
 st.markdown('<div class="center-content">', unsafe_allow_html=True)
 st.markdown(f'<h1 class="title">{Config.APP_NAME}</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Your all-in-one solution for data preprocessing, visualization, and insights</p>',
+st.markdown('<p class="subtitle">Upload a spreadsheet and understand your data — clean it, chart it, '
+            'and build prediction models, all without writing code.</p>',
             unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -24,24 +25,24 @@ left, right = st.columns([1, 1])
 
 with left:
     st.markdown('<div class="content-area">', unsafe_allow_html=True)
-    st.markdown('<h3 style="color: white;">Here to take care of your data</h3>', unsafe_allow_html=True)
-    st.markdown('<p>Our platform offers a complete workflow:</p>', unsafe_allow_html=True)
+    st.markdown('<h3 style="color: white;">From spreadsheet to insights — no code</h3>', unsafe_allow_html=True)
+    st.markdown('<p>Everything you need, step by step:</p>', unsafe_allow_html=True)
 
     # Checkboxes with green check marks
     st.markdown("""
     <div class="checkbox-item">
-        <span class="green-check">✅</span> Easy data upload and inspection
+        <span class="green-check">✅</span> Spot data-quality issues automatically
     </div>
     <div class="checkbox-item">
-        <span class="green-check">✅</span> Powerful preprocessing capabilities
+        <span class="green-check">✅</span> Clean &amp; prepare your data — no formulas
     </div>
     <div class="checkbox-item">
-        <span class="green-check">✅</span> Interactive visualizations
+        <span class="green-check">✅</span> Explore with interactive charts &amp; dashboards
     </div>
     <div class="checkbox-item">
-        <span class="green-check">✅</span> Custom dashboard creation
+        <span class="green-check">✅</span> Build &amp; download prediction models
     </div>
-    <p style="margin-top: 1rem;">Get started now to transform your data journey!</p>
+    <p style="margin-top: 1rem;">Have a spreadsheet? Get started — or try it with sample data.</p>
     """, unsafe_allow_html=True)
 
     # Button

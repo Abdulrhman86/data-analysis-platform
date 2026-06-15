@@ -1,10 +1,17 @@
 # Data Analysis Platform
 
-A no-code **data mining & analysis** web application built with Streamlit. Upload a
-dataset and move through a guided workflow — data-quality assessment, preprocessing,
-visualization, dashboards, and machine learning — without writing any code.
+**Upload a spreadsheet, understand your data, and build prediction models — without
+writing code.** A guided, no-code web app (Streamlit) that walks you from a raw
+CSV/Excel file through data-quality checks, cleaning/preprocessing, interactive
+charts and dashboards, and machine-learning models you can train, evaluate, and
+download.
+
+For anyone with a spreadsheet who wants answers without code — students, analysts,
+and the data-curious. Try it instantly with the built-in sample dataset.
 
 > Undergraduate graduation project (DSAI).
+
+![Data Analysis Platform — landing page](docs/screenshot-home.png)
 
 ## Features
 

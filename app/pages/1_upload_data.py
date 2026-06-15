@@ -107,6 +107,18 @@ with col1:
     uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=Config.ALLOWED_EXTENSIONS)
     st.caption("🔒 This is a public demo — please don't upload confidential or personal data.")
 
+    if st.button("✨ Try it with sample data", help="Load a sample sales dataset to explore the app"):
+        try:
+            sample_df = pd.read_csv(os.path.join(Paths.STATIC_DIR, "sample_sales.csv"))
+            sample_df.columns = sample_df.columns.astype(str)
+            sample_df = try_convert_date_columns(sample_df)
+            st.session_state.data = sample_df
+            st.session_state.file = "sample_sales.csv"
+            st.session_state.file_name = "sample_sales.csv"
+            st.rerun()
+        except Exception as e:
+            st.error(f"Could not load sample data: {e}")
+
     if uploaded_file is not None:
         size_mb = uploaded_file.size / (1024 * 1024)
         if size_mb > Config.MAX_FILE_SIZE_MB:
