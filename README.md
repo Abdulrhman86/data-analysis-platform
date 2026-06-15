@@ -31,18 +31,17 @@ Python 3.11 · Streamlit · pandas · NumPy · scikit-learn · Plotly · Matplot
 ```
 data_mining/
 ├── requirements.txt
+├── requirements-dev.txt
 ├── README.md
 ├── .gitignore
-└── home.py/                  # application package (entry point + pages + utils)
+└── app/                      # application package
     ├── home.py               # app entry point (landing page)
     ├── config.py             # theme, colors, app settings
     ├── pages/                # the six workflow pages
-    ├── utils/                # preprocessing, visualization, and ML modules
-    └── static/               # images
+    ├── utils/                # preprocessing, visualization, charts, and ML modules
+    ├── static/               # images
+    └── tests/                # pytest suite
 ```
-
-> Note: the application package is currently a folder named `home.py` (kept for
-> compatibility with the existing entry point). Renaming it to `app/` is planned.
 
 ## Setup & run
 
@@ -61,14 +60,23 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # 3. Run the app (from inside the application package)
-cd home.py
+cd app
 streamlit run home.py
 ```
 
 The app then opens in your browser at <http://localhost:8501>.
 
+## Testing
+
+```bash
+pip install -r requirements-dev.txt
+cd app
+pytest
+```
+
 ## Status
 
-Active development. A phased enhancement plan tracks known issues and the roadmap
-(correctness fixes for the ML pipeline, security hardening, dashboard persistence,
-automated tests, and more).
+Active development. Recent work: a leakage-free scikit-learn training pipeline,
+security hardening, disk-persisted dashboards, a shared chart core, additional
+models with hyperparameter tuning, a predict-on-new-data tab, and a growing
+pytest suite.
