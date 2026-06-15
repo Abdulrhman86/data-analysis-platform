@@ -902,6 +902,18 @@ with model_tab:
 
         # Training options
         with st.expander("Training Options", expanded=True):
+            scaler_choice = st.selectbox(
+                "Numeric feature scaling:",
+                options=["standard", "robust", "minmax", "power"],
+                help="How numeric features are scaled inside the training pipeline (fit on the training split only)."
+            )
+            processor.preprocessing['scaler'] = scaler_choice
+
+            tune = st.checkbox(
+                "Tune hyperparameters (grid search)", value=False,
+                help="Search a small grid of hyperparameters with cross-validation and keep the best model."
+            )
+
             use_cv = st.checkbox("Use cross-validation", value=True,
                                  help="Cross-validation trains the model on different subsets of the data to ensure robust performance")
 
@@ -919,8 +931,18 @@ with model_tab:
                 X_test = train_test_data['X_test']
                 y_test = train_test_data['y_test']
 
-                # Train model
-                model = processor.train_model(selected_model, X_train, y_train)
+                # Train model (optionally tuning hyperparameters first)
+                if tune:
+                    tune_scoring = ('accuracy' if st.session_state.current_task == 'classification'
+                                    else 'neg_mean_squared_error')
+                    model, best_params = processor.tune_model(
+                        selected_model, X_train, y_train,
+                        cv=cv_folds if use_cv else 5, scoring=tune_scoring
+                    )
+                    if best_params:
+                        st.info(f"Best hyperparameters: {best_params}")
+                else:
+                    model = processor.train_model(selected_model, X_train, y_train)
 
                 # Store trained model
                 st.session_state.trained_models[selected_model] = model

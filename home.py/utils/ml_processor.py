@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler, MinMaxScaler, PowerTransformer
 from sklearn.impute import SimpleImputer
 import pickle
 
@@ -30,21 +30,31 @@ class MLProcessor:
         self.model_configs = {}   # name -> hyperparameter dict
         self.fitted_models = {}   # name -> fitted sklearn Pipeline
         self.results = {}
+        self.preprocessing = {'scaler': 'standard'}  # numeric scaler choice
 
     # ------------------------------------------------------------------ #
     # Preprocessing
     # ------------------------------------------------------------------ #
     @staticmethod
-    def build_preprocessor(X):
-        """Build a ColumnTransformer for the columns present in ``X``."""
+    def build_preprocessor(X, scaler='standard'):
+        """Build a ColumnTransformer for the columns present in ``X``.
+
+        ``scaler`` selects the numeric scaler: standard / robust / minmax / power.
+        """
         numeric_features = X.select_dtypes(include=['number']).columns.tolist()
         categorical_features = X.select_dtypes(
             include=['object', 'category', 'bool']
         ).columns.tolist()
 
+        scalers = {
+            'standard': StandardScaler(),
+            'robust': RobustScaler(),
+            'minmax': MinMaxScaler(),
+            'power': PowerTransformer(),
+        }
         numeric_pipe = Pipeline([
             ('impute', SimpleImputer(strategy='median')),
-            ('scale', StandardScaler()),
+            ('scale', scalers.get(scaler, StandardScaler())),
         ])
         categorical_pipe = Pipeline([
             ('impute', SimpleImputer(strategy='most_frequent')),
@@ -66,7 +76,7 @@ class MLProcessor:
         if model_name not in self.models:
             raise ValueError(f"Model '{model_name}' not registered")
         return Pipeline([
-            ('preprocess', self.build_preprocessor(X)),
+            ('preprocess', self.build_preprocessor(X, scaler=self.preprocessing.get('scaler', 'standard'))),
             ('model', self.models[model_name]),
         ])
 
@@ -154,6 +164,33 @@ class MLProcessor:
         """
         estimator = self._build_pipeline(model_name, X)
         return cross_val_score(estimator, X, y, cv=cv, scoring=scoring)
+
+    def get_param_grid(self, model_name):
+        """Hyperparameter grid for tuning (overridden by subclasses)."""
+        return {}
+
+    def tune_model(self, model_name, X, y, search='grid', cv=5, n_iter=10, scoring=None):
+        """Search hyperparameters for a model and keep the best fitted pipeline.
+
+        Returns ``(best_pipeline, best_params)``. Falls back to a plain fit when
+        the model has no tunable grid.
+        """
+        from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+        pipeline = self._build_pipeline(model_name, X)
+        grid = {f"model__{k}": v for k, v in self.get_param_grid(model_name).items()}
+        if not grid:
+            pipeline.fit(X, y)
+            self.fitted_models[model_name] = pipeline
+            return pipeline, {}
+        if search == 'random':
+            searcher = RandomizedSearchCV(pipeline, grid, n_iter=n_iter, cv=cv,
+                                          scoring=scoring, random_state=42)
+        else:
+            searcher = GridSearchCV(pipeline, grid, cv=cv, scoring=scoring)
+        searcher.fit(X, y)
+        self.fitted_models[model_name] = searcher.best_estimator_
+        best_params = {k.replace('model__', ''): v for k, v in searcher.best_params_.items()}
+        return searcher.best_estimator_, best_params
 
     # ------------------------------------------------------------------ #
     # Persistence (saves the FITTED pipeline, incl. preprocessing)

@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from utils.ml_processor import MLProcessor
 
@@ -73,6 +74,32 @@ class ClassificationProcessor(MLProcessor):
             {}
         )
 
+        # K-Nearest Neighbors (benefits from the pipeline's feature scaling)
+        self.register_model(
+            "K-Nearest Neighbors",
+            KNeighborsClassifier(),
+            {"n_neighbors": 5}
+        )
+
+        # Gradient Boosting (histogram-based; strong non-linear baseline)
+        self.register_model(
+            "Gradient Boosting",
+            HistGradientBoostingClassifier(random_state=42),
+            {"learning_rate": 0.1, "max_depth": None}
+        )
+
+    def get_param_grid(self, model_name):
+        """Small hyperparameter grids used by tune_model."""
+        grids = {
+            "Logistic Regression": {"C": [0.1, 1.0, 10.0]},
+            "Decision Tree": {"max_depth": [3, 5, 10, None], "min_samples_split": [2, 5]},
+            "Random Forest": {"n_estimators": [100, 200], "max_depth": [5, 10, None]},
+            "SVM": {"C": [0.1, 1.0, 10.0], "kernel": ["rbf", "linear"]},
+            "K-Nearest Neighbors": {"n_neighbors": [3, 5, 7, 11]},
+            "Gradient Boosting": {"learning_rate": [0.05, 0.1], "max_depth": [None, 3, 5]},
+        }
+        return grids.get(model_name, {})
+
     def update_model_parameters(self, model_name, parameters):
         """
         Update model parameters
@@ -95,6 +122,10 @@ class ClassificationProcessor(MLProcessor):
             model = SVC(probability=True, random_state=42, **parameters)
         elif model_name == "Naive Bayes":
             model = GaussianNB(**parameters)
+        elif model_name == "K-Nearest Neighbors":
+            model = KNeighborsClassifier(**parameters)
+        elif model_name == "Gradient Boosting":
+            model = HistGradientBoostingClassifier(random_state=42, **parameters)
         else:
             raise ValueError(f"Unsupported model: {model_name}")
 

@@ -1,9 +1,10 @@
 # utils/regression_models.py
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
+from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from utils.ml_processor import MLProcessor
 
@@ -66,6 +67,40 @@ class RegressionProcessor(MLProcessor):
             }
         )
 
+        # Elastic Net (L1 + L2; benefits from the pipeline's feature scaling)
+        self.register_model(
+            "Elastic Net",
+            ElasticNet(random_state=42),
+            {"alpha": 1.0, "l1_ratio": 0.5}
+        )
+
+        # K-Nearest Neighbors
+        self.register_model(
+            "K-Nearest Neighbors",
+            KNeighborsRegressor(),
+            {"n_neighbors": 5}
+        )
+
+        # Gradient Boosting (histogram-based)
+        self.register_model(
+            "Gradient Boosting",
+            HistGradientBoostingRegressor(random_state=42),
+            {"learning_rate": 0.1, "max_depth": None}
+        )
+
+    def get_param_grid(self, model_name):
+        """Small hyperparameter grids used by tune_model."""
+        grids = {
+            "Ridge Regression": {"alpha": [0.1, 1.0, 10.0]},
+            "Lasso Regression": {"alpha": [0.01, 0.1, 1.0]},
+            "Elastic Net": {"alpha": [0.01, 0.1, 1.0], "l1_ratio": [0.2, 0.5, 0.8]},
+            "Decision Tree Regressor": {"max_depth": [3, 5, 10, None]},
+            "Random Forest Regressor": {"n_estimators": [100, 200], "max_depth": [5, 10, None]},
+            "K-Nearest Neighbors": {"n_neighbors": [3, 5, 7, 11]},
+            "Gradient Boosting": {"learning_rate": [0.05, 0.1], "max_depth": [None, 3, 5]},
+        }
+        return grids.get(model_name, {})
+
     def update_model_parameters(self, model_name, parameters):
         """
         Update model parameters
@@ -88,6 +123,12 @@ class RegressionProcessor(MLProcessor):
             model = DecisionTreeRegressor(random_state=42, **parameters)
         elif model_name == "Random Forest Regressor":
             model = RandomForestRegressor(random_state=42, **parameters)
+        elif model_name == "Elastic Net":
+            model = ElasticNet(random_state=42, **parameters)
+        elif model_name == "K-Nearest Neighbors":
+            model = KNeighborsRegressor(**parameters)
+        elif model_name == "Gradient Boosting":
+            model = HistGradientBoostingRegressor(random_state=42, **parameters)
         else:
             raise ValueError(f"Unsupported model: {model_name}")
 
