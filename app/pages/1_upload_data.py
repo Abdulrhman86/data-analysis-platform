@@ -173,9 +173,9 @@ if st.session_state.data is not None:
             st.markdown(f'<div class="metric-value">{len(numerical_columns)}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            st.markdown('<span class="metric-label">Missing values percentage</span>', unsafe_allow_html=True)
+            st.markdown('<span class="metric-label">Data completeness</span>', unsafe_allow_html=True)
             quality_score = 100 - min(100, (missing_values / (num_rows * num_columns) * 100 if num_rows * num_columns > 0 else 0))
-            st.markdown(f'<div class="metric-value">{quality_score:.4f}%</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-value">{quality_score:.2f}%</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
