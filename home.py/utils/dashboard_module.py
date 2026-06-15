@@ -195,6 +195,20 @@ class DashboardComponent:
                 st.error(f"Error rendering {self.chart_type} chart: {str(e)}")
                 st.write("Configuration:", self.config)
 
+    def get_figure(self, df):
+        """Return this component's Plotly figure for the common chart types, else None.
+
+        Used by PDF export; custom chart types (radar/3d/sunburst/...) return None.
+        """
+        builder = charts.BUILDERS.get(self.chart_type)
+        if builder is None:
+            return None
+        try:
+            cfg = {**self.config, 'title': self.title, 'height': self.height}
+            return builder(df, cfg)
+        except Exception:
+            return None
+
     def _render_violin_plot(self, df):
         """Render a violin plot component"""
         if not self.config.get('y'):
@@ -860,6 +874,53 @@ def load_dashboards():
         return {}
 
 
+def _apply_filters(st, df):
+    """Render global dashboard filter widgets and return the filtered DataFrame."""
+    with st.expander("Filters", expanded=False):
+        chosen = st.multiselect("Filter by columns:", list(df.columns), key="dash_filter_cols")
+        filtered = df
+        for col in chosen:
+            if pd.api.types.is_numeric_dtype(df[col]):
+                lo, hi = float(df[col].min()), float(df[col].max())
+                if lo < hi:
+                    a, b = st.slider(f"{col} range:", lo, hi, (lo, hi), key=f"dash_filter_{col}")
+                    filtered = filtered[(filtered[col] >= a) & (filtered[col] <= b)]
+            else:
+                opts = sorted(df[col].dropna().astype(str).unique().tolist())
+                picked = st.multiselect(f"{col} values:", opts, default=opts, key=f"dash_filter_{col}")
+                filtered = filtered[filtered[col].astype(str).isin(picked)]
+        return filtered
+
+
+def export_dashboard_html(dashboard, df):
+    """Combine a dashboard's charts into one self-contained HTML page (string),
+    or None if no chart could be exported.
+
+    Open the file and use the browser's "Print -> Save as PDF" to get a PDF.
+    This needs no native/static-image engine (kaleido), so it can't hang.
+    """
+    import html as _html
+
+    sections = []
+    for comp in dashboard.components:
+        fig = comp.get_figure(df)
+        if fig is None:
+            continue
+        # Load plotly.js once (with the first chart), then reuse it.
+        include_js = 'cdn' if not sections else False
+        sections.append(fig.to_html(full_html=False, include_plotlyjs=include_js))
+
+    if not sections:
+        return None
+
+    title = _html.escape(dashboard.name)
+    body = "\n".join(f'<div style="margin-bottom:24px;">{s}</div>' for s in sections)
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<title>{title}</title></head><body><h1>{title}</h1>{body}</body></html>"
+    )
+
+
 def dashboard_manager_ui(st, df):
     """
     Streamlit UI for managing dashboards
@@ -1327,21 +1388,33 @@ def dashboard_manager_ui(st, df):
             if selected_dashboard:
                 dashboard = st.session_state.dashboards[selected_dashboard]
 
+                # Global filters applied to the data before rendering.
+                filtered_df = _apply_filters(st, df)
+
+                # Export the dashboard's charts to one self-contained HTML file
+                # (open it, then "Print -> Save as PDF" in the browser).
+                if st.button("Export dashboard as HTML", key="export_html_btn"):
+                    html_doc = export_dashboard_html(dashboard, filtered_df)
+                    if html_doc:
+                        st.download_button(
+                            "Download dashboard HTML", data=html_doc.encode("utf-8"),
+                            file_name=f"{dashboard.name}.html", mime="text/html",
+                            key="download_html_btn"
+                        )
+                    else:
+                        st.warning("No exportable charts found (custom chart types are not "
+                                   "yet supported by export).")
+
                 # Add a fullscreen mode option
                 fullscreen = st.checkbox("Fullscreen Mode", key="fullscreen_view")
 
                 st.markdown("---")
 
                 if fullscreen:
-                    # In fullscreen mode, hide UI elements
-                    dashboard.render(df)
+                    dashboard.render(filtered_df)
                 else:
-                    # Normal view with some additional controls
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.subheader(f"Dashboard Preview: {dashboard.name}")
-
-                    dashboard.render(df)
+                    st.subheader(f"Dashboard Preview: {dashboard.name}")
+                    dashboard.render(filtered_df)
 
     with import_export_tab:
         export_tab, import_tab = st.tabs(["Export Dashboard", "Import Dashboard"])
