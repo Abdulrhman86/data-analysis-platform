@@ -112,8 +112,6 @@ class Config:
             border-radius: var(--radius-lg);
             padding: var(--space-5);
             margin-bottom: var(--space-5);
-            backdrop-filter: blur(14px) saturate(140%);
-            -webkit-backdrop-filter: blur(14px) saturate(140%);
             box-shadow: var(--shadow-md);
         }
         /* hide orphan empty wrappers — Streamlit renders a markdown <div class="card">
@@ -229,7 +227,6 @@ class Config:
         .stAlert, div[data-testid="stAlert"] {
             border-radius: var(--radius-md) !important;
             border: 1px solid var(--border) !important;
-            backdrop-filter: blur(10px);
         }
         .stSuccess { border-left: 3px solid var(--success) !important; }
         .stInfo { border-left: 3px solid var(--primary) !important; }
@@ -264,31 +261,12 @@ class Config:
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-        @keyframes aurora-drift {
-            0%   { transform: translate3d(0, 0, 0) scale(1); }
-            50%  { transform: translate3d(2.5%, 2%, 0) scale(1.08); }
-            100% { transform: translate3d(-2%, -1.5%, 0) scale(1.05); }
-        }
         @keyframes btn-shine { from { left: -120%; } to { left: 150%; } }
         @keyframes shimmer { from { background-position: -468px 0; } to { background-position: 468px 0; } }
 
-        /* animated aurora overlay — drifts slowly behind all content */
-        .stApp::before {
-            content: "";
-            position: fixed;
-            inset: -25%;
-            z-index: 0;
-            pointer-events: none;
-            background:
-                radial-gradient(620px 420px at 22% 18%, rgba(99, 102, 241, 0.13), transparent 60%),
-                radial-gradient(560px 380px at 78% 28%, rgba(139, 92, 246, 0.11), transparent 60%),
-                radial-gradient(520px 360px at 52% 82%, rgba(59, 130, 246, 0.10), transparent 60%);
-            filter: blur(28px);
-            animation: aurora-drift 26s var(--ease) infinite alternate;
-            will-change: transform;
-        }
-        /* keep real UI above the aurora layer */
-        [data-testid="stAppViewContainer"] { position: relative; z-index: 1; }
+        /* aurora is the static .stApp background (from the design tokens above) —
+           a continuously animated full-viewport blur caused scroll jank, so the
+           background stays still and motion lives in interactions instead. */
 
         /* page entrance — top-level blocks cascade up (precise path targets only
            top-level blocks, so React keeps them stable → no replay on rerun) */
