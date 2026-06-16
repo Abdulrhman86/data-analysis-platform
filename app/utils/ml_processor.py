@@ -5,6 +5,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler, MinMaxScaler, PowerTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import VarianceThreshold
 import pickle
 
 
@@ -54,11 +55,17 @@ class MLProcessor:
         }
         numeric_pipe = Pipeline([
             ('impute', SimpleImputer(strategy='median')),
+            # Drop constant (zero-variance) columns so PowerTransformer/StandardScaler
+            # don't produce NaNs and feature-selection scores aren't junk.
+            ('variance', VarianceThreshold(0.0)),
             ('scale', scalers.get(scaler, StandardScaler())),
         ])
         categorical_pipe = Pipeline([
             ('impute', SimpleImputer(strategy='most_frequent')),
-            ('encode', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
+            # max_categories caps the one-hot width so a high-cardinality / free-text
+            # column can't explode into thousands of columns (rare values are grouped).
+            ('encode', OneHotEncoder(handle_unknown='ignore', sparse_output=False,
+                                     max_categories=50)),
         ])
 
         transformers = []
@@ -155,15 +162,34 @@ class MLProcessor:
         """Evaluate a trained model (implemented by subclasses)."""
         raise NotImplementedError("Subclasses must implement evaluate_model")
 
+    def safe_cv_folds(self, y, cv):
+        """Clamp the CV fold count so it never exceeds the number of samples (or, for
+        classification, the smallest class count). Returns ``None`` when valid CV is
+        impossible (a class with fewer than 2 members)."""
+        cap = len(y)
+        if self.task_type == 'classification':
+            counts = pd.Series(y).value_counts()
+            if len(counts):
+                cap = min(cap, int(counts.min()))
+        folds = min(int(cv), cap)
+        return folds if folds >= 2 else None
+
     def cross_validate(self, model_name, X, y, cv=5, scoring=None):
         """Cross-validate a model.
 
         Builds a fresh pipeline so the preprocessing is re-fit inside every fold
-        (no leakage). scikit-learn automatically uses StratifiedKFold for
-        classifier pipelines when ``cv`` is an integer.
+        (no leakage). The fold count is clamped to the data so small/imbalanced
+        datasets don't raise. scikit-learn uses StratifiedKFold for classifier
+        pipelines when ``cv`` is an integer.
         """
+        folds = self.safe_cv_folds(y, cv)
+        if folds is None:
+            raise ValueError(
+                "Cross-validation needs at least 2 samples of each class; this "
+                "dataset is too small or too imbalanced for it."
+            )
         estimator = self._build_pipeline(model_name, X)
-        return cross_val_score(estimator, X, y, cv=cv, scoring=scoring)
+        return cross_val_score(estimator, X, y, cv=folds, scoring=scoring)
 
     def get_param_grid(self, model_name):
         """Hyperparameter grid for tuning (overridden by subclasses)."""
@@ -178,15 +204,17 @@ class MLProcessor:
         from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
         pipeline = self._build_pipeline(model_name, X)
         grid = {f"model__{k}": v for k, v in self.get_param_grid(model_name).items()}
-        if not grid:
+        folds = self.safe_cv_folds(y, cv)
+        if not grid or folds is None:
+            # No tunable grid, or too little data for CV -> just fit once.
             pipeline.fit(X, y)
             self.fitted_models[model_name] = pipeline
             return pipeline, {}
         if search == 'random':
-            searcher = RandomizedSearchCV(pipeline, grid, n_iter=n_iter, cv=cv,
+            searcher = RandomizedSearchCV(pipeline, grid, n_iter=n_iter, cv=folds,
                                           scoring=scoring, random_state=42)
         else:
-            searcher = GridSearchCV(pipeline, grid, cv=cv, scoring=scoring)
+            searcher = GridSearchCV(pipeline, grid, cv=folds, scoring=scoring)
         searcher.fit(X, y)
         self.fitted_models[model_name] = searcher.best_estimator_
         best_params = {k.replace('model__', ''): v for k, v in searcher.best_params_.items()}

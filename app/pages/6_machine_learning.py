@@ -158,35 +158,16 @@ with data_prep_tab:
                           if pd.api.types.is_numeric_dtype(data[col])
                           and not pd.api.types.is_bool_dtype(data[col])]
     if feature_selection_method == "Use all features":
-        # For regression, only use numerical features
-        if st.session_state.current_task == "regression":
-            if len(numerical_features) == 0:
-                st.error(
-                    "No numerical features available for regression. Please convert some features to numeric first.")
-                selected_features = []
-            else:
-                selected_features = numerical_features
-                if len(numerical_features) < len(available_features):
-                    st.warning(
-                        f"Only using {len(numerical_features)} numerical features for regression (excluding categorical features).")
-        else:
-            # For classification, we can use all features
-            selected_features = available_features
+        # Categorical features work for BOTH tasks — the model pipeline one-hot
+        # encodes them, and only the *target* must be numeric for regression (that
+        # is enforced in prepare_data). So use every available feature.
+        selected_features = available_features
+        if not selected_features:
+            st.error("No feature columns are available. Please pick a different target column.")
 
     elif feature_selection_method == "Select features manually":
-        # For regression, only show numerical features
-        if st.session_state.current_task == "regression":
-            if len(numerical_features) == 0:
-                st.error(
-                    "No numerical features available for regression. Please convert some features to numeric first.")
-                selectable_features = []
-                selected_features = []
-            else:
-                st.info("For regression tasks, only numerical features can be selected.")
-                selectable_features = numerical_features
-        else:
-            # For classification, show all features
-            selectable_features = available_features
+        # Both tasks can use categorical features (the pipeline encodes them).
+        selectable_features = available_features
 
         # Show multiselect only if there are features to select
         if len(selectable_features) > 0:
@@ -977,29 +958,28 @@ with model_tab:
 
                 # Cross-validation if requested
                 if use_cv:
-                    with st.spinner(f"Performing {cv_folds}-fold cross-validation..."):
-                        if st.session_state.current_task == "classification":
-                            scoring = 'accuracy'
-                        else:
-                            scoring = 'neg_mean_squared_error'
+                    try:
+                        with st.spinner("Performing cross-validation..."):
+                            if st.session_state.current_task == "classification":
+                                scoring = 'accuracy'
+                            else:
+                                scoring = 'neg_mean_squared_error'
 
-                        cv_scores = processor.cross_validate(
-                            selected_model,
-                            X_train,
-                            y_train,
-                            cv=cv_folds,
-                            scoring=scoring
-                        )
+                            cv_scores = processor.cross_validate(
+                                selected_model, X_train, y_train, cv=cv_folds, scoring=scoring
+                            )
 
-                        if scoring == 'neg_mean_squared_error':
-                            cv_scores = -cv_scores  # Convert to positive MSE
-                            cv_score_name = "MSE"
-                        else:
-                            cv_score_name = scoring.capitalize()
+                            if scoring == 'neg_mean_squared_error':
+                                cv_scores = -cv_scores  # Convert to positive MSE
+                                cv_score_name = "MSE"
+                            else:
+                                cv_score_name = scoring.capitalize()
 
-                        st.write(f"Cross-validation {cv_score_name}:")
-                        st.write(f"Mean: {cv_scores.mean():.4f}")
-                        st.write(f"Standard Deviation: {cv_scores.std():.4f}")
+                            st.write(f"Cross-validation {cv_score_name}:")
+                            st.write(f"Mean: {cv_scores.mean():.4f}")
+                            st.write(f"Standard Deviation: {cv_scores.std():.4f}")
+                    except Exception as cv_err:
+                        st.warning(f"Skipped cross-validation: {cv_err}")
 
                 # Evaluate model
                 metrics = processor.evaluate_model(selected_model, X_test, y_test)

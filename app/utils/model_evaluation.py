@@ -127,8 +127,22 @@ def get_learning_curve_data(model, X, y, cv=5, train_sizes=np.linspace(0.1, 1.0,
     Returns:
         dict: containing train_sizes, train_scores, and test_scores
     """
+    import pandas as pd
+    # Clamp folds to the data (classification needs >=2 samples per class) and use
+    # n_jobs=1 -- n_jobs=-1 can fail to pickle some estimators on Windows/Streamlit.
+    final = model.named_steps.get('model') if hasattr(model, 'named_steps') else model
+    is_classifier = hasattr(final, 'predict_proba') or hasattr(final, 'classes_')
+    cap = len(y)
+    if is_classifier:
+        counts = pd.Series(y).value_counts()
+        if len(counts):
+            cap = min(cap, int(counts.min()))
+    folds = min(int(cv), cap)
+    if folds < 2:
+        raise ValueError("Not enough data to compute a learning curve.")
+
     train_sizes, train_scores, test_scores = learning_curve(
-        model, X, y, cv=cv, n_jobs=-1, train_sizes=train_sizes
+        model, X, y, cv=folds, n_jobs=1, train_sizes=train_sizes
     )
 
     return {

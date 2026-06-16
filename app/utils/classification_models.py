@@ -163,11 +163,23 @@ class ClassificationProcessor(MLProcessor):
         # For ROC AUC, we need probability predictions
         try:
             y_proba = model.predict_proba(X_test)
-            classes = model.classes_
+            classes = list(model.classes_)
             # For multi-class, use one-vs-rest with an explicit class order so the
             # probability columns line up with the true labels.
             if y_proba.shape[1] > 2:
-                roc_auc = roc_auc_score(y_test, y_proba, multi_class='ovr', labels=classes)
+                # Only score classes actually present in y_test — otherwise a class
+                # missing from the split makes roc_auc_score raise and the metric
+                # silently disappears.
+                present = [c for c in classes if c in set(y_test)]
+                if len(present) >= 2:
+                    idx = [classes.index(c) for c in present]
+                    proba = y_proba[:, idx]
+                    sums = proba.sum(axis=1, keepdims=True)
+                    sums[sums == 0] = 1.0
+                    roc_auc = roc_auc_score(y_test, proba / sums,
+                                            multi_class='ovr', labels=present)
+                else:
+                    roc_auc = None
             else:
                 roc_auc = roc_auc_score(y_test, y_proba[:, 1])
         except Exception:
@@ -209,8 +221,16 @@ class ClassificationProcessor(MLProcessor):
         except Exception:
             names = feature_names
 
+        def _names_for(n):
+            # Use the encoded names only if they line up with the value count;
+            # otherwise fall back to generic labels (prevents a length mismatch).
+            if names is not None and len(list(names)) == n:
+                return list(names)
+            return [f"feature_{i}" for i in range(n)]
+
         if hasattr(estimator, 'feature_importances_'):
-            return pd.Series(estimator.feature_importances_, index=names).sort_values(ascending=False)
+            vals = np.ravel(estimator.feature_importances_)
+            return pd.Series(vals, index=_names_for(len(vals))).sort_values(ascending=False)
         elif hasattr(estimator, 'coef_'):
             coef = estimator.coef_
             if getattr(coef, 'ndim', 1) > 1:
@@ -218,6 +238,7 @@ class ClassificationProcessor(MLProcessor):
                 importance = np.mean(np.abs(coef), axis=0)
             else:
                 importance = np.abs(coef)
-            return pd.Series(importance, index=names).sort_values(ascending=False)
+            importance = np.ravel(importance)
+            return pd.Series(importance, index=_names_for(len(importance))).sort_values(ascending=False)
         else:
             return None
