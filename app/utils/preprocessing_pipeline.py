@@ -26,8 +26,11 @@ def record_step(processor_type):
             # Apply the function
             result = func(self, df, *args, **kwargs)
 
-            # Only record if explicitly requested AND a pipeline exists
-            if record_to_pipeline and 'pipelines' in st.session_state and st.session_state.current_pipeline is not None:
+            # Record whenever requested. record_preprocessing_step() initialises the
+            # pipeline store and auto-creates a "Default Pipeline" on first use, so a
+            # model trained after some preprocessing always has a replayable recipe
+            # (previously this gate blocked that auto-create, so recipes were lost).
+            if record_to_pipeline:
                 # Extract function name
                 function_name = func.__name__
 
@@ -920,9 +923,8 @@ def pipeline_manager_ui(st, df, processors):
 
 
 def record_preprocessing_step(processor_type, function_name, params, description=None):
-    print(f"Recording step: {function_name} with params {params}")
     """
-    Record a preprocessing step to the current pipeline
+    Record a preprocessing step to the current pipeline.
 
     Args:
         processor_type: Type of processor (e.g., 'numeric', 'categorical')
@@ -957,5 +959,8 @@ def record_preprocessing_step(processor_type, function_name, params, description
 
     pipeline.add_step(step)
 
-    # Notify user
-    st.success(f"Added step to pipeline: {step_name}")
+    # Lightweight, non-blocking confirmation (fires on every recorded op now).
+    try:
+        st.toast(f"Recorded for reproducibility: {step_name}", icon="🧪")
+    except Exception:
+        pass

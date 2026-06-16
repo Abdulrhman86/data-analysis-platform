@@ -3,9 +3,16 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
+import copy
 import plotly.graph_objects as go
 from config import Config, Paths
 from datetime import datetime
+from utils.preprocessing_utils import read_csv_robust, finalize_dataframe
+from utils.data_processor import DataProcessor
+from utils.numeric_processor import NumericProcessor
+from utils.categorical_processor import CategoricalProcessor
+from utils.datetime_processor import DatetimeProcessor
+from utils.feature_engineering import FeatureEngineeringProcessor
 
 # Import our machine learning utilities
 from utils.classification_models import ClassificationProcessor
@@ -38,6 +45,11 @@ if 'regression_processor' not in st.session_state:
     st.session_state.regression_processor = RegressionProcessor()
 if 'trained_models' not in st.session_state:
     st.session_state.trained_models = {}
+if 'model_pipelines' not in st.session_state:
+    # model name -> a snapshot of the preprocessing recipe (PreprocessingPipeline)
+    # that produced its training data, so Predict/Export can re-derive engineered
+    # features from raw uploads.
+    st.session_state.model_pipelines = {}
 if 'current_task' not in st.session_state:
     st.session_state.current_task = None
 if 'model_results' not in st.session_state:
@@ -952,6 +964,17 @@ with model_tab:
                 # Store trained model
                 st.session_state.trained_models[selected_model] = model
 
+                # Snapshot the preprocessing recipe that produced this training data so
+                # Predict/Export can re-derive engineered features from a RAW upload.
+                try:
+                    active = st.session_state.get('current_pipeline')
+                    pipe = st.session_state.get('pipelines', {}).get(active) if active else None
+                    st.session_state.model_pipelines[selected_model] = (
+                        copy.deepcopy(pipe) if pipe is not None and getattr(pipe, 'steps', None) else None
+                    )
+                except Exception:
+                    st.session_state.model_pipelines[selected_model] = None
+
                 # Cross-validation if requested
                 if use_cv:
                     with st.spinner(f"Performing {cv_folds}-fold cross-validation..."):
@@ -1282,8 +1305,9 @@ with predict_tab:
         predict_model_name = st.selectbox(
             "Model to use:", list(st.session_state.trained_models.keys()), key="predict_model_select"
         )
-        st.caption("Upload a file with the same feature columns used for training. "
-                   "Missing values and categorical encoding are handled by the model's pipeline.")
+        st.caption("Upload **raw** data — if this model was trained after preprocessing, the "
+                   "same steps are re-applied automatically before predicting. Imputation and "
+                   "categorical encoding are handled by the model's pipeline.")
         new_file = st.file_uploader(
             "Upload new data (CSV or Excel):", type=["csv", "xlsx", "xls"], key="predict_upload"
         )
@@ -1291,20 +1315,48 @@ with predict_tab:
         if new_file is not None and predict_model_name:
             try:
                 if new_file.name.lower().endswith('.csv'):
-                    new_df = pd.read_csv(new_file)
+                    new_df = read_csv_robust(new_file)
                 else:
                     new_df = pd.read_excel(new_file)
-                new_df.columns = new_df.columns.astype(str)
+                new_df = finalize_dataframe(new_df)
 
                 model = st.session_state.trained_models[predict_model_name]
                 features = st.session_state.get('feature_names', [])
-                missing = [c for c in features if c not in new_df.columns]
+
+                # Re-derive engineered feature columns from the raw upload using the recipe
+                # captured when this model was trained (if it needed preprocessing).
+                feature_df = new_df
+                recipe = st.session_state.get('model_pipelines', {}).get(predict_model_name)
+                if recipe is not None and getattr(recipe, 'steps', None) \
+                        and any(c not in new_df.columns for c in features):
+                    try:
+                        processors = {
+                            'data': DataProcessor(),
+                            'numeric': NumericProcessor(),
+                            'categorical': CategoricalProcessor(),
+                            'datetime': DatetimeProcessor(),
+                            'feature': FeatureEngineeringProcessor(),
+                        }
+                        feature_df = recipe.apply(new_df, processors)
+                        st.info(f"Re-applied {len(recipe.steps)} preprocessing step(s) from "
+                                "training to the uploaded data.")
+                    except Exception as re:
+                        st.warning(f"Could not fully re-apply the training preprocessing ({re}); "
+                                   "predicting on the raw columns instead.")
+                        feature_df = new_df
+
+                missing = [c for c in features if c not in feature_df.columns]
                 if missing:
-                    st.error(f"Uploaded data is missing required feature columns: {missing}")
+                    st.error("After preprocessing, the data is still missing required feature "
+                             f"columns: {missing}. Upload data containing the original columns "
+                             "used during training.")
                 else:
-                    X_new = new_df[features] if features else new_df
+                    X_new = feature_df[features] if features else feature_df
                     predictions = model.predict(X_new)
-                    result = new_df.copy()
+                    if len(new_df) == len(predictions):
+                        result = new_df.copy()           # keep the user's original columns
+                    else:
+                        result = feature_df.copy()       # rows changed in preprocessing
                     result['prediction'] = predictions
                     st.success(f"Generated {len(predictions)} predictions.")
                     st.dataframe(result.head(20), use_container_width=True)
@@ -1387,19 +1439,32 @@ with export_tab:
                 # Download button for the model
                 st.subheader("Download Model")
                 create_streamlit_download_button(model, model_to_export, metadata)
+                if st.session_state.get('model_pipelines', {}).get(model_to_export):
+                    st.caption("Note: this model was trained after preprocessing. The single .pkl "
+                               "carries the sklearn pipeline (imputation/encoding/scaling) but NOT "
+                               "the feature-engineering steps — use **Full Pipeline** export for a "
+                               "bundle that reproduces predictions from raw data.")
             else:
                 # Export full pipeline
                 st.subheader("Download Full Pipeline")
-                if 'pipelines' in st.session_state and st.session_state.current_pipeline:
-                    # Include preprocessing steps if available
-                    pipeline = st.session_state.pipelines[st.session_state.current_pipeline]
+                # Prefer the recipe captured for THIS model; fall back to the active
+                # pipeline. .get() avoids a KeyError if current_pipeline was deleted.
+                pipeline = st.session_state.get('model_pipelines', {}).get(model_to_export)
+                if pipeline is None and st.session_state.get('current_pipeline'):
+                    pipeline = st.session_state.get('pipelines', {}).get(
+                        st.session_state.current_pipeline)
+                if pipeline is not None and getattr(pipeline, 'steps', None):
                     preprocessing_steps = [step.to_dict() for step in pipeline.steps]
                     metadata["preprocessing_pipeline"] = {
                         "pipeline_name": pipeline.name,
-                        "steps_count": len(preprocessing_steps)
+                        "steps_count": len(preprocessing_steps),
                     }
+                    st.caption(f"Including {len(preprocessing_steps)} preprocessing step(s) so the "
+                               "exported pipeline reproduces predictions from raw data.")
                 else:
                     preprocessing_steps = None
+                    st.caption("This model used no recorded preprocessing — it predicts on the raw "
+                               "feature columns directly.")
 
                 # Create a dict of models if multiple are trained
                 models_to_export = {}
