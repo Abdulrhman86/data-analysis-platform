@@ -80,7 +80,7 @@ def display_numeric_distributions(viz_data, numeric_columns):
         finally:
             plt.close()  # Ensure figure is closed
 
-    elif distribution_type == "ECDF":
+    elif distribution_type.startswith("ECDF"):
         # Create ECDF for each selected column
         fig = go.Figure()
 

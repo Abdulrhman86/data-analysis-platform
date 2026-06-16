@@ -831,22 +831,27 @@ def batch_process_missing_values(st, df, selected_columns, column_types, process
             if missing_count > 0:
                 try:
                     if is_numeric or is_categorical:
-                        # Determine replacement value
+                        # Record the STRATEGY (not a value frozen now) so a replayed
+                        # recipe recomputes the mean/mode from the data it is applied
+                        # to; a literal value is recorded only for "Custom Value".
                         if is_numeric:
                             if strategy == "Custom Value":
-                                col_value = value
+                                result_df = processor.replace_missing_values(
+                                    result_df, col, value=value, inplace=inplace,
+                                    record_to_pipeline=True)
                             else:
-                                col_value = processor.get_replacement_value(df, col, strategy.lower())
+                                result_df = processor.replace_missing_values(
+                                    result_df, col, strategy=strategy.lower(),
+                                    inplace=inplace, record_to_pipeline=True)
                         else:  # categorical
                             if strategy == "Most Frequent Value":
-                                col_value = processor.get_replacement_value(df, col, 'most_frequent')
+                                result_df = processor.replace_missing_values(
+                                    result_df, col, strategy='most_frequent',
+                                    inplace=inplace, record_to_pipeline=True)
                             else:  # Custom Value
-                                col_value = value
-
-                        # Apply using the processor method
-                        result_df = processor.replace_missing_values(
-                            result_df, col, col_value, inplace=inplace, record_to_pipeline=True
-                        )
+                                result_df = processor.replace_missing_values(
+                                    result_df, col, value=value, inplace=inplace,
+                                    record_to_pipeline=True)
 
                     elif is_datetime:
                         if method == "fill_na":
@@ -1507,21 +1512,14 @@ else:
             # Let user select a column
             selected_column = st.selectbox("Select a column to operate on:", columns)
 
-            # Check the data type to offer appropriate functions
-            column_type = 'categorical'  # Default
-
-            # Try to detect column type
-            if pd.api.types.is_numeric_dtype(st.session_state.data[selected_column]):
-                column_type = 'numeric'
-            elif pd.api.types.is_datetime64_dtype(st.session_state.data[selected_column]):
-                column_type = 'datetime'
-            else:
-                # Try to detect if it can be converted to datetime
-                try:
-                    pd.to_datetime(st.session_state.data[selected_column], errors='raise')
-                    column_type = 'datetime'
-                except Exception:
-                    column_type = 'categorical'
+            # Determine the column type with the cached, name+pattern-aware detector
+            # rather than brute pd.to_datetime (which mis-parses integer/ID columns as
+            # dates and re-ran uncached on every interaction).
+            from utils.preprocessing_utils import detect_column_types
+            col_types = detect_column_types(st.session_state.data)
+            column_type = col_types.get(selected_column, 'categorical')
+            if column_type not in ('numeric', 'datetime'):
+                column_type = 'categorical'
 
             # Column info box
             st.markdown(f'''

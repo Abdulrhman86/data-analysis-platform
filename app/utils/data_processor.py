@@ -14,26 +14,30 @@ class DataProcessor:
         return df[column].isna().sum()
 
     @record_step("data")
-    def replace_missing_values(self, df, column, value, inplace=True):
+    def replace_missing_values(self, df, column, value=None, inplace=True, strategy=None):
         """
-        Replace missing values in a column
+        Replace missing values in a column.
 
         Args:
             df: pandas DataFrame
             column: column to process
-            value: value to use for replacement
-            inplace: if True, replace values in original column; if False, create a new column
+            value: literal value to use when no ``strategy`` is given
+            inplace: if True, replace in the original column; else create a "_filled" one
+            strategy: if given ('mean'/'median'/'mode'/'most_frequent'/'zero'), the fill
+                value is RECOMPUTED from this df. Recording the strategy (instead of a
+                value frozen at record time) makes a replayed recipe use the NEW data's
+                statistic — the correct behaviour for mean/mode imputation.
 
         Returns:
             DataFrame with replaced missing values
         """
         result_df = df.copy()
+        if strategy:
+            value = self.get_replacement_value(df, column, strategy)
 
         if inplace:
-            # Replace missing values in the original column
             result_df[column] = df[column].fillna(value)
         else:
-            # Create a new column with "_filled" suffix
             result_df[f"{column}_filled"] = df[column].fillna(value)
 
         return result_df

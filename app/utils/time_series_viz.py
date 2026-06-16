@@ -404,8 +404,10 @@ def display_seasonality_analysis(viz_data, date_col, value_col):
             return fig, f"seasonality_quarter_{value_col}"
 
         elif component == "Hour (if available)":
-            # Check if time component exists
-            if hasattr(temp_data[date_col].dt, 'hour'):
+            # Only plot by hour when there is real intraday variation — `.dt.hour`
+            # always EXISTS for datetime64 (so hasattr was always True) but is all
+            # zeros for date-only data.
+            if temp_data[date_col].dt.hour.nunique(dropna=True) > 1:
                 temp_data['hour'] = temp_data[date_col].dt.hour
 
                 # Group by hour

@@ -101,9 +101,15 @@ class NumericProcessor(DataProcessor):
 
     @record_step("numeric")
     def apply_log_transform(self, df, column, offset=0):
-        """Apply log transform to a column"""
+        """Apply a log transform to a column.
+
+        Non-positive inputs make ``np.log`` return -inf (zeros) or NaN (negatives),
+        which silently corrupts the feature when a recorded recipe is replayed on a
+        new dataset whose values dip to/below zero. We clip to a tiny positive value
+        so the output is always finite (NaNs in the input are preserved)."""
         result_df = df.copy()
-        result_df[f"{column}_log"] = np.log(df[column] + offset)
+        col = pd.to_numeric(df[column], errors='coerce') + offset
+        result_df[f"{column}_log"] = np.log(col.clip(lower=1e-9))
         return result_df
 
     def calculate_outlier_bounds(self, df, column):

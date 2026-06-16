@@ -409,8 +409,15 @@ def feature_engineering_ui(st, df, column_types):
                 return result
 
     elif fe_type == "Text Features":
+        def _avg_len(col):
+            # Coerce to str first: an object column may hold non-string values
+            # (numbers, lists) on which .str.len() raises.
+            try:
+                return df[col].dropna().astype(str).str.len().mean()
+            except Exception:
+                return 0
         text_columns = [col for col in categorical_columns
-                        if df[col].dtype == 'object' and df[col].str.len().mean() > 10]
+                        if df[col].dtype == 'object' and (_avg_len(col) or 0) > 10]
 
         if not text_columns:
             st.warning("No suitable text columns found.")
