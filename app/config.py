@@ -11,6 +11,7 @@ class Config:
     ALLOWED_EXTENSIONS = ["csv", "xlsx", "xls"]
     MAX_FILE_SIZE_MB = 50  # keep within Streamlit Community Cloud's ~1 GB memory
     DEFAULT_PREVIEW_ROWS = 10
+    MAX_CHART_ROWS = 5000  # down-sample threshold for chart rendering
 
     # Theme colors (kept in sync with the CSS design tokens below)
     COLORS = {
@@ -407,6 +408,7 @@ class Paths:
 
 # Feature flags - useful for enabling/disabling features
 class FeatureFlags:
-    ENABLE_DATA_QUALITY_SCORE = True
-    ENABLE_DASHBOARD_EXPORT = True
-    ENABLE_RECENT_FILES = False  # Feature coming soon
+    # Gates the "recent files" upload shortcut (not yet implemented). The two
+    # always-on flags that used to live here were dead (referenced nowhere), so
+    # they were removed rather than shipped as flags that flag nothing.
+    ENABLE_RECENT_FILES = False

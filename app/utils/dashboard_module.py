@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 import plotly.graph_objects as go
 from utils import charts
+from config import Config
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -712,11 +713,10 @@ class Dashboard:
             st.info("This dashboard has no components yet. Add some components to get started.")
             return
 
-        # Down-sample large datasets so dashboard charts stay responsive
-        # (mirrors the visualization page's safeguard).
-        if len(df) > MAX_DASHBOARD_ROWS:
-            st.caption(f"Showing a {MAX_DASHBOARD_ROWS:,}-row sample of {len(df):,} rows.")
-            df = df.sample(MAX_DASHBOARD_ROWS, random_state=42)
+        # Down-sample large datasets so dashboard charts stay responsive.
+        if len(df) > Config.MAX_CHART_ROWS:
+            st.caption(f"Showing a {Config.MAX_CHART_ROWS:,}-row sample of {len(df):,} rows.")
+            df = df.sample(Config.MAX_CHART_ROWS, random_state=42)
 
         # Organize components into rows
         i = 0
@@ -737,10 +737,6 @@ class Dashboard:
             for j, component in enumerate(row_components):
                 with columns[j]:
                     component.render(df)
-
-
-# Maximum rows rendered in a dashboard chart (mirrors the visualization page).
-MAX_DASHBOARD_ROWS = 5000
 
 
 def _dashboards_file():

@@ -10,7 +10,7 @@ from utils.preprocessing_utils import (
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
-from config import Config, Paths
+from config import Config, Paths, FeatureFlags
 
 # Configure page
 st.set_page_config(
@@ -144,9 +144,11 @@ with col2:
     else:
         st.markdown('<p style="color: #6B7280;">No file selected</p>', unsafe_allow_html=True)
 
-    # Feature for future implementation
-    if st.button('Recent Files', disabled=True, help="Coming soon: Access recently used datasets"):
-        pass  # Placeholder for future functionality
+    # "Recent files" is not implemented yet — gated behind a flag instead of shown
+    # as a permanently-disabled button.
+    if FeatureFlags.ENABLE_RECENT_FILES:
+        if st.button('Recent Files', help="Access recently used datasets"):
+            pass  # Placeholder for future functionality
 
 st.markdown('</div>', unsafe_allow_html=True)
 
