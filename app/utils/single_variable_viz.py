@@ -18,6 +18,15 @@ def display_numeric_variable(viz_data, selected_column, chart_type):
         selected_column: Name of the column to visualize
         chart_type: Type of chart to display (Histogram, Box Plot, etc.)
     """
+    # Defensive: a "numeric" column may still be numbers stored as text. Coerce to a
+    # real numeric series (non-numbers -> NaN) so describe()/quantile()/charts can't crash.
+    if not pd.api.types.is_numeric_dtype(viz_data[selected_column]):
+        viz_data = viz_data.copy()
+        viz_data[selected_column] = pd.to_numeric(viz_data[selected_column], errors='coerce')
+    if viz_data[selected_column].dropna().empty:
+        st.warning(f"Column **{selected_column}** has no numeric values to visualize.")
+        return None, f"empty_{selected_column}"
+
     if chart_type == "Histogram":
         bins = st.slider("Number of bins:", 5, 100, 20, key="histogram_bins")
 

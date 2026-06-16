@@ -2,6 +2,119 @@ import pandas as pd
 import numpy as np
 import re
 from datetime import datetime
+import streamlit as st
+
+# Matches a plain integer or decimal (optionally signed) — used to detect
+# numbers that arrived as text so they can be coerced to a real numeric dtype.
+_NUMERIC_STR_RE = re.compile(r'^[-+]?[0-9]*\.?[0-9]+$')
+
+
+def coerce_numeric_strings(df):
+    """Convert object columns whose non-null values are ALL numeric strings into a
+    real numeric dtype, so numbers stored as text ("12", "3.5") behave like numbers
+    everywhere downstream. Only fully-numeric columns are converted; any column with
+    a single non-numeric value is left untouched (stays categorical)."""
+    result = df.copy()
+    for col in result.columns:
+        if result[col].dtype != 'object':
+            continue
+        non_null = result[col].dropna()
+        if non_null.empty:
+            continue
+        try:
+            as_str = non_null.astype(str).str.strip()
+            if as_str.str.match(_NUMERIC_STR_RE).all():
+                result[col] = pd.to_numeric(result[col], errors='coerce')
+        except Exception:
+            continue
+    return result
+
+
+def dedupe_column_names(df):
+    """Rename duplicate column labels (``x`` -> ``x``, ``x.1``, ``x.2`` ...). Duplicate
+    labels make ``df[col]`` return a DataFrame instead of a Series, which silently
+    breaks charts, groupby and selectbox-driven flows."""
+    seen = {}
+    new_cols = []
+    for c in df.columns.astype(str):
+        if c in seen:
+            seen[c] += 1
+            new_cols.append(f"{c}.{seen[c]}")
+        else:
+            seen[c] = 0
+            new_cols.append(c)
+    if new_cols != list(df.columns.astype(str)):
+        df = df.copy()
+        df.columns = new_cols
+    return df
+
+
+def read_csv_robust(file_or_buffer, header=0):
+    """Read a CSV, falling back across encodings AND delimiter sniffing so non-UTF-8
+    files and ``;``/tab-delimited files still load. A wrong delimiter does NOT raise —
+    it collapses every row into one column — so when the default read yields a single
+    column we retry with delimiter sniffing and keep it only if it finds more."""
+    def _read(**kw):
+        if hasattr(file_or_buffer, 'seek'):
+            file_or_buffer.seek(0)
+        return pd.read_csv(file_or_buffer, header=header, **kw)
+
+    last_err = None
+    for enc in (None, 'latin-1'):
+        enc_kw = {} if enc is None else {'encoding': enc}
+        try:
+            df = _read(**enc_kw)
+            if df.shape[1] == 1:  # likely the delimiter wasn't a comma
+                try:
+                    sniffed = _read(sep=None, engine='python', **enc_kw)
+                    if sniffed.shape[1] > 1:
+                        df = sniffed
+                except Exception:
+                    pass
+            return df
+        except Exception as e:
+            last_err = e
+    raise last_err
+
+
+# Column names we are willing to reinterpret as Excel serial dates.
+_EXCEL_DATE_KEYWORDS = ['date', 'day', 'month', 'year', 'time', 'created', 'updated',
+                        'modified', 'birth', 'start', 'end', 'timestamp', 'dt']
+
+
+def prepare_excel_datetime_columns(df):
+    """Convert Excel serial-date columns to datetime — but ONLY when the column name
+    looks date-related and almost the whole column sits in the Excel-date range, so a
+    price/ID/population column is never silently turned into a date. Pure (copies)."""
+    df = df.copy()
+    for col in df.columns:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            continue
+        if not any(k in str(col).lower() for k in _EXCEL_DATE_KEYWORDS):
+            continue  # name doesn't suggest a date -> leave the numbers alone
+        try:
+            sample = df[col].dropna()
+            if len(sample) == 0:
+                continue
+            # Excel serial dates ~20000 (1954) .. ~60000 (2064); require ~all values
+            in_range = ((sample > 20000) & (sample < 60000)).mean()
+            if in_range >= 0.9:
+                df[col] = pd.to_datetime(df[col], unit='D', origin='1899-12-30')
+        except Exception:
+            pass
+    return df
+
+
+def finalize_dataframe(df):
+    """Shared post-read cleanup (pure): stringify + de-duplicate column names, coerce
+    numbers-stored-as-text to a numeric dtype, and detect date columns. Empty-file
+    handling is intentionally left to the caller (returns the cleaned frame as-is)."""
+    df = df.copy()
+    df.columns = df.columns.astype(str)
+    df = dedupe_column_names(df)
+    df = coerce_numeric_strings(df)
+    df = try_convert_date_columns(df)
+    return df
 
 def assess_data_quality(df):
     """
@@ -193,6 +306,7 @@ def is_excel_date(series):
     ).mean() >= 0.8  # 80% of values in range
 
 
+@st.cache_data(show_spinner=False)
 def detect_column_types(df):
     """
     Detect the data type of each column in the dataframe
@@ -256,10 +370,15 @@ def detect_column_types(df):
                         except Exception:
                             pass
 
-            # Check if it might be a numeric column stored as string
+            # A column of numbers stored as text is treated as numeric (it is coerced
+            # to a real numeric dtype at ingestion); only genuinely mixed/text columns
+            # stay categorical. This prevents numeric-as-text columns from vanishing
+            # from the viz/preprocessing pages (which only bucket numeric/categorical/
+            # datetime).
             try:
-                if df[col].str.match(r'^[-+]?[0-9]*\.?[0-9]+$').all():
-                    column_types[col] = 'numeric_as_string'
+                if df[col].dropna().astype(str).str.strip().str.match(_NUMERIC_STR_RE).all() \
+                        and not df[col].dropna().empty:
+                    column_types[col] = 'numeric'
                 else:
                     column_types[col] = 'categorical'
             except Exception:

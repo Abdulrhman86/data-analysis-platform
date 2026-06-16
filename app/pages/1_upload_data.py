@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 import os
 import html
-from utils.preprocessing_utils import try_convert_date_columns
+from utils.preprocessing_utils import (
+    read_csv_robust,
+    prepare_excel_datetime_columns,
+    finalize_dataframe,
+)
 from config import Config, Paths
 
 # Configure page
@@ -17,6 +21,16 @@ st.set_page_config(
 st.markdown(Config.get_css(), unsafe_allow_html=True)
 st.markdown(Config.stepper(1), unsafe_allow_html=True)
 
+def _validate_and_finalize(df):
+    """Guard empty files (UI layer), then run the shared finalize cleanup
+    (column de-dup, numeric-string coercion, date detection)."""
+    if df is None or df.shape[0] == 0 or df.shape[1] == 0:
+        st.error("The file appears to be empty (no rows or no columns). "
+                 "Please upload a non-empty CSV or Excel file.")
+        return None
+    return finalize_dataframe(df)
+
+
 # Function to read and process uploaded files
 def read_file(uploaded_file):
     file_extension = uploaded_file.name.split('.')[-1].lower()
@@ -28,10 +42,8 @@ def read_file(uploaded_file):
                 header_option = st.checkbox("First row is header", value=True)
                 header = 0 if header_option else None
 
-            df = pd.read_csv(uploaded_file, header=header)
-            df.columns = df.columns.astype(str)
-            df = try_convert_date_columns(df)
-            return df
+            df = read_csv_robust(uploaded_file, header)
+            return _validate_and_finalize(df)
 
         elif file_extension in ['xlsx', 'xls']:
             # Add options for Excel files
@@ -44,12 +56,8 @@ def read_file(uploaded_file):
                     header = 0 if header_option else None
 
                     df = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=header)
-                    df.columns = df.columns.astype(str)
-
-                    # Try to properly identify datetime columns from Excel
                     df = prepare_excel_datetime_columns(df)
-                    df = try_convert_date_columns(df)
-                    return df
+                    return _validate_and_finalize(df)
                 except Exception as e:
                     st.error(f"Error reading Excel file: {e}")
                     return None
@@ -59,25 +67,6 @@ def read_file(uploaded_file):
     except Exception as e:
         st.error(f"Error reading file: {e}")
         return None
-
-
-def prepare_excel_datetime_columns(df):
-    """Handle Excel datetime columns more effectively"""
-    for col in df.columns:
-        # Check if the column contains Excel date/time values
-        if pd.api.types.is_numeric_dtype(df[col]):
-            # Try to detect if it's an Excel date format
-            try:
-                # Sample the first few non-null values
-                sample = df[col].dropna().head(5)
-                if len(sample) > 0:
-                    # Check if values appear to be Excel dates (large numbers close to days since 1900)
-                    if all(30000 < val < 50000 for val in sample):
-                        # Convert to datetime using Excel's epoch
-                        df[col] = pd.to_datetime(df[col], unit='D', origin='1899-12-30')
-            except Exception:
-                pass
-    return df
 
 
 # Initialize session state variables
@@ -112,12 +101,12 @@ with col1:
     if st.button("✨ Try it with sample data", help="Load a sample sales dataset to explore the app"):
         try:
             sample_df = pd.read_csv(os.path.join(Paths.STATIC_DIR, "sample_sales.csv"))
-            sample_df.columns = sample_df.columns.astype(str)
-            sample_df = try_convert_date_columns(sample_df)
-            st.session_state.data = sample_df
-            st.session_state.file = "sample_sales.csv"
-            st.session_state.file_name = "sample_sales.csv"
-            st.rerun()
+            sample_df = _validate_and_finalize(sample_df)
+            if sample_df is not None:
+                st.session_state.data = sample_df
+                st.session_state.file = "sample_sales.csv"
+                st.session_state.file_name = "sample_sales.csv"
+                st.rerun()
         except Exception as e:
             st.error(f"Could not load sample data: {e}")
 
