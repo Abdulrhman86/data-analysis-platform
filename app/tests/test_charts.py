@@ -57,3 +57,20 @@ def test_build_heatmap(df):
 
 def test_aggregate_none_returns_original(df):
     assert len(charts._aggregate(df, "cat", "num", "none")) == len(df)
+
+
+def test_build_correlation(df):
+    fig = charts.build_correlation(df, {})
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) >= 1
+
+
+def test_build_histogram_overlay(df):
+    fig = charts.build_histogram_overlay(df, {"columns": ["num", "num2"]})
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 2  # one histogram trace per column
+
+
+def test_new_builders_registered():
+    assert "correlation" in charts.BUILDERS
+    assert "histogram_overlay" in charts.BUILDERS

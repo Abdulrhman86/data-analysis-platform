@@ -94,6 +94,29 @@ def build_heatmap(df, config):
     return px.imshow(pivot, title=config.get("title"), height=config.get("height"))
 
 
+def build_correlation(df, config):
+    """Correlation heatmap of the numeric columns (or a given ``columns`` subset)."""
+    cols = config.get("columns")
+    numeric = df[cols] if cols else df.select_dtypes(include="number")
+    corr = numeric.corr(method=config.get("method", "pearson"))
+    return px.imshow(corr, text_auto=config.get("text_auto", ".2f"),
+                     color_continuous_scale=config.get("color_scale", "RdBu_r"),
+                     zmin=-1, zmax=1, aspect="auto",
+                     title=config.get("title"), height=config.get("height"))
+
+
+def build_histogram_overlay(df, config):
+    """Overlaid histograms for comparing the distribution of several numeric columns."""
+    fig = go.Figure()
+    for col in config.get("columns", []):
+        series = pd.to_numeric(df[col], errors="coerce").dropna()
+        fig.add_trace(go.Histogram(x=series, name=str(col), opacity=0.6,
+                                   nbinsx=config.get("bins", 30)))
+    fig.update_layout(barmode="overlay", title=config.get("title"),
+                      height=config.get("height"))
+    return fig
+
+
 # chart_type -> builder. Shared by the dashboard engine.
 BUILDERS = {
     "bar": build_bar,
@@ -101,8 +124,10 @@ BUILDERS = {
     "scatter": build_scatter,
     "pie": build_pie,
     "histogram": build_histogram,
+    "histogram_overlay": build_histogram_overlay,
     "box": build_box,
     "violin": build_violin,
     "kde": build_kde,
     "heatmap": build_heatmap,
+    "correlation": build_correlation,
 }

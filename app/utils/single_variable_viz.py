@@ -72,18 +72,14 @@ def display_numeric_variable(viz_data, selected_column, chart_type):
         return fig, f"violin_{selected_column}"
 
     elif chart_type == "KDE Plot":
-        # Use a more memory-efficient approach
-        plt.figure(figsize=(10, 6))
-        sns.kdeplot(viz_data[selected_column].dropna(), fill=True)
-        plt.title(f"KDE Plot of {selected_column}")
-        plt.grid(True, alpha=0.3)
-
-        # Display the plot
-        st.pyplot(plt)
-        export_matplotlib_chart(plt, f"kde_{selected_column}", width=6, height=4)
-
-        # Return None since we're using matplotlib and not returning a plotly figure
-        return None, f"kde_{selected_column}"
+        # Use the shared Plotly Gaussian-KDE builder (same one the dashboard uses)
+        # instead of a separate seaborn/matplotlib implementation — so single-variable
+        # KDE matches everywhere and can be added to a dashboard.
+        fig = charts.build_kde(viz_data, {
+            "x": selected_column, "title": f"KDE Plot of {selected_column}", "height": 500,
+        })
+        st.plotly_chart(fig, use_container_width=True)
+        return fig, f"kde_{selected_column}"
 
 
 def display_categorical_variable(viz_data, selected_column, chart_type):
