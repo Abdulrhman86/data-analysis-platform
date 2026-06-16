@@ -7,6 +7,9 @@ from utils.preprocessing_utils import (
     prepare_excel_datetime_columns,
     finalize_dataframe,
 )
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 from config import Config, Paths
 
 # Configure page
@@ -28,7 +31,9 @@ def _validate_and_finalize(df):
         st.error("The file appears to be empty (no rows or no columns). "
                  "Please upload a non-empty CSV or Excel file.")
         return None
-    return finalize_dataframe(df)
+    out = finalize_dataframe(df)
+    logger.info("Loaded dataset: %d rows x %d columns", out.shape[0], out.shape[1])
+    return out
 
 
 # Function to read and process uploaded files

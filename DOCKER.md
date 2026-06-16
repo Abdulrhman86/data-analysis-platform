@@ -46,8 +46,16 @@ docker stop dap && docker rm dap   # stop + remove
   `-p 9000:8501` → http://localhost:9000.
 - **Health:** the container has a `HEALTHCHECK` hitting Streamlit's
   `/_stcore/health`; `docker ps` shows `healthy` once it's up (~25s).
-- **Data is ephemeral:** uploaded files and saved dashboards live inside the
-  container and reset when it's removed — same behaviour as the hosted demo.
+- **Data is ephemeral by default:** uploaded files and saved dashboards live
+  inside the container and reset when it's removed. To **persist dashboards**
+  across restarts, mount a volume and point `DASHBOARD_DIR` at it:
+  ```bash
+  docker run --rm -p 8501:8501 \
+    -e DASHBOARD_DIR=/data -v dap_data:/data \
+    data-analysis-platform
+  ```
+- **Logging:** set `LOG_LEVEL` (e.g. `-e LOG_LEVEL=DEBUG`) to control verbosity;
+  logs go to the container's stdout (`docker logs dap`).
 - **Config:** `.streamlit/config.toml` (dark theme + 50 MB upload cap) is baked
   into the image, so the look and limits match local/cloud exactly.
 - **Image size:** ~1.2 GB (the scientific stack — pandas/numpy/scipy/scikit-learn/

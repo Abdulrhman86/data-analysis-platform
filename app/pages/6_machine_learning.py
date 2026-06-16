@@ -13,6 +13,9 @@ from utils.numeric_processor import NumericProcessor
 from utils.categorical_processor import CategoricalProcessor
 from utils.datetime_processor import DatetimeProcessor
 from utils.feature_engineering import FeatureEngineeringProcessor
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 # Import our machine learning utilities
 from utils.classification_models import ClassificationProcessor
@@ -944,6 +947,9 @@ with model_tab:
 
                 # Store trained model
                 st.session_state.trained_models[selected_model] = model
+                logger.info("Trained model '%s' on %d samples (%d features)",
+                            selected_model, len(X_train),
+                            len(st.session_state.get('feature_names', [])))
 
                 # Snapshot the preprocessing recipe that produced this training data so
                 # Predict/Export can re-derive engineered features from a RAW upload.

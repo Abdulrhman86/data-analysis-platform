@@ -9,6 +9,9 @@ import os
 from datetime import datetime
 import plotly.graph_objects as go
 from utils import charts
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 
@@ -741,34 +744,63 @@ MAX_DASHBOARD_ROWS = 5000
 
 
 def _dashboards_file():
-    """Path to the on-disk dashboard store (created on demand)."""
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.app_data')
+    """Path to the on-disk dashboard store (created on demand).
+
+    Defaults to ``app/.app_data`` (anchored to this file, not the CWD). Set the
+    ``DASHBOARD_DIR`` env var to a mounted volume to persist dashboards across
+    container restarts / redeploys (the default location is ephemeral on Streamlit
+    Cloud and in Docker)."""
+    data_dir = os.environ.get('DASHBOARD_DIR') or os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), '.app_data')
     os.makedirs(data_dir, exist_ok=True)
     return os.path.join(data_dir, 'dashboards.json')
 
 
 def save_dashboards(dashboards):
-    """Persist all dashboards ({name: Dashboard}) to disk as JSON (best-effort)."""
+    """Persist all dashboards ({name: Dashboard}) to disk as JSON, atomically.
+
+    Writes to a temp file then ``os.replace``s it into place, so a crash or partial
+    write can never truncate the existing store and lose every dashboard."""
     try:
         payload = {name: dash.to_dict() for name, dash in dashboards.items()}
-        with open(_dashboards_file(), 'w', encoding='utf-8') as f:
+        path = _dashboards_file()
+        tmp = path + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(payload, f, indent=2)
+        os.replace(tmp, path)  # atomic on the same filesystem
+        logger.info("Saved %d dashboard(s) to disk", len(payload))
     except Exception as e:
-        print(f"Could not save dashboards: {e}")
+        logger.exception("Could not save dashboards: %s", e)
 
 
 def load_dashboards():
-    """Load dashboards from disk. Returns {name: Dashboard} (empty if none/invalid)."""
+    """Load dashboards from disk. Returns {name: Dashboard} (empty if none).
+
+    Fault-isolated: a single malformed dashboard is skipped (not fatal to the rest),
+    and a wholly-corrupt/unreadable file is quarantined to ``.corrupt`` instead of
+    being silently overwritten by the next save."""
+    path = _dashboards_file()
+    if not os.path.exists(path):
+        return {}
     try:
-        path = _dashboards_file()
-        if not os.path.exists(path):
-            return {}
         with open(path, 'r', encoding='utf-8') as f:
             payload = json.load(f)
-        return {name: Dashboard.from_dict(data) for name, data in payload.items()}
     except Exception as e:
-        print(f"Could not load dashboards: {e}")
+        logger.exception("Dashboard store unreadable, quarantining to .corrupt: %s", e)
+        try:
+            os.replace(path, path + '.corrupt')
+        except Exception:
+            pass
         return {}
+
+    result = {}
+    for name, data in (payload.items() if isinstance(payload, dict) else []):
+        try:
+            result[name] = Dashboard.from_dict(data)
+        except Exception as e:
+            logger.warning("Skipping malformed dashboard '%s': %s", name, e)
+    logger.info("Loaded %d dashboard(s) from disk", len(result))
+    return result
 
 
 def _apply_filters(st, df):

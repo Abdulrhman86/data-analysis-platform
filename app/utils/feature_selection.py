@@ -1,7 +1,10 @@
 # utils/feature_selection.py
 import pandas as pd
 import numpy as np
+from utils.logging_setup import get_logger
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
+
+logger = get_logger(__name__)
 from sklearn.feature_selection import RFE
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -51,7 +54,7 @@ def filter_valid_data(X, y):
         raise ValueError("No complete rows found after removing missing values. Please handle missing values first.")
 
     if len(valid_data) < len(X):
-        print(f"Dropped {len(X) - len(valid_data)} rows with missing values.")
+        logger.info("Feature selection dropped %d rows with missing values.", len(X) - len(valid_data))
 
     # Split back into X and y
     X_filtered = valid_data.drop('target', axis=1)

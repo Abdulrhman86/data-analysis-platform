@@ -6,6 +6,9 @@ import base64
 import difflib
 import functools
 from datetime import datetime
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def record_step(processor_type):
@@ -56,7 +59,7 @@ def record_step(processor_type):
                     )
                 except Exception as e:
                     # Log error but don't prevent function from working
-                    print(f"Error recording step: {str(e)}")
+                    logger.warning("Error recording preprocessing step: %s", e)
 
             return result
 
