@@ -65,28 +65,46 @@ Demo 2 is the important one: against a **completely random target**, a leaky pip
 65.5% accuracy — impossible, and exactly the kind of number that gets a model shipped by mistake.
 This pipeline reports 47.5%, correctly near chance.
 
-### 2. Models that are self-contained
+### 2. The rest of the ML methodology, done deliberately
+
+Leakage is the headline, but the same care is applied throughout — these are the decisions a
+reviewer would check:
+
+| Concern | How it's handled |
+|---|---|
+| **Preprocessing scope** | `ColumnTransformer` (median-impute + scale for numeric; mode-impute + one-hot for categorical) fit **only** on `X_train` |
+| **Cross-validation** | A fresh pipeline is constructed per fold, so the imputer/scaler/encoder are re-fit inside every fold — never once on the whole set |
+| **Hyperparameter search** | `GridSearchCV`/`RandomizedSearchCV` wraps the **entire pipeline**, so preprocessing is re-fit within each search fold too |
+| **Train/test split** | Stratified for classification whenever every class has ≥2 members; rows with a missing target are dropped *before* splitting |
+| **Class imbalance** | `class_weight="balanced"` applied automatically to every estimator that supports it (LogReg, SVM, tree ensembles) |
+| **Multiclass ROC-AUC** | One-vs-rest with an **explicit class ordering**, so probability columns align with true labels — and scored only over classes actually present in the test split |
+| **Average precision** | Computed with `average_precision_score`, not approximated by averaging precision values |
+| **Unseen categories** | `handle_unknown="ignore"` — a category absent at training time doesn't crash inference |
+| **Degenerate features** | Zero-variance columns dropped before scaling; one-hot width capped to prevent high-cardinality explosion |
+| **Small / imbalanced data** | CV fold count is clamped to the smallest class count instead of raising, with the reduction reported |
+
+### 3. Models that are self-contained
 
 An exported model isn't just an estimator — it carries its own preprocessing. You can hand it a
 **raw** row (unscaled, unencoded, with missing values, with categories it has never seen) and it
 predicts correctly. The in-app *Predict* tab re-applies the same recorded feature-engineering
 recipe to a raw uploaded file, so the model behaves identically inside and outside the app.
 
-### 3. Built for messy real data, not just the happy path
+### 4. Built for messy real data, not just the happy path
 
 Hardened against the things that actually break data tools: numbers stored as text, non-UTF-8
 encodings, semicolon/tab delimiters, duplicate column headers, empty files, all-NaN columns,
 zero-variance features, high-cardinality categoricals (one-hot explosion), single-class targets,
 and datasets too small for the requested number of CV folds.
 
-### 4. Tested and containerized
+### 5. Tested and containerized
 
 **98 automated tests** covering the ML pipeline, leakage prevention, ingestion edge cases,
 preprocessing replay, persistence robustness, security sanitization, chart builders, and the
 model export → reload → predict round-trip. Ships with a `Dockerfile` (non-root user, healthcheck)
 and `docker-compose.yml`.
 
-### 5. Security and durability
+### 6. Security and durability
 
 User-supplied content (column names, filenames, chart titles) is escaped before reaching raw HTML;
 the replayable preprocessing pipeline uses an allowlist so a crafted pipeline file can't invoke
