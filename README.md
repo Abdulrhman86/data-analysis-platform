@@ -212,7 +212,7 @@ data_mining/
 
 ## About
 
-Built by **Bashar Dabayba** as an undergraduate graduation project (Data Science & AI).
+Built by **Abdulrhman Alramahi**, with contributions from **Bashar Dabayba** as an undergraduate graduation project (Data Science & AI).
 
 The goal was to make rigorous machine learning accessible to people who don't write code —
 without the methodological shortcuts that make "easy" ML tools produce numbers you can't trust.
