@@ -1,87 +1,203 @@
 # Data Analysis Platform
 
-**Upload a spreadsheet, understand your data, and build prediction models — without
-writing code.** A guided, no-code web app (Streamlit) that walks you from a raw
-CSV/Excel file through data-quality checks, cleaning/preprocessing, interactive
-charts and dashboards, and machine-learning models you can train, evaluate, and
-download.
+**Upload a spreadsheet → understand it, clean it, chart it, and train a prediction model. No code.**
 
-For anyone with a spreadsheet who wants answers without code — students, analysts,
-and the data-curious. Try it instantly with the built-in sample dataset.
+A guided six-step web app that takes a non-technical user from a raw CSV/Excel file to a
+downloadable, production-usable machine-learning model — with the statistical rigor that
+usually gets skipped in no-code tools.
 
-> Undergraduate graduation project (DSAI).
+<p>
+  <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white">
+  <img alt="Streamlit" src="https://img.shields.io/badge/Streamlit-1.39-FF4B4B?logo=streamlit&logoColor=white">
+  <img alt="scikit-learn" src="https://img.shields.io/badge/scikit--learn-1.5-F7931E?logo=scikitlearn&logoColor=white">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-98%20passing-3fb950">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white">
+  <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
 
 ![Data Analysis Platform — landing page](docs/screenshot-home.png)
 
-## Features
+---
 
-A six-step guided workflow:
+## Try it in 30 seconds
 
-1. **Upload Data** — CSV / Excel import with automatic date detection and a data preview.
-2. **Data Quality** — automated assessment with severity-ranked recommendations
-   (missing values, outliers, skew, high cardinality, duplicates, …).
-3. **Preprocessing** — missing-value handling, scaling/normalization, binning, encoding,
-   datetime features, feature engineering & selection, plus a recordable/replayable pipeline.
-4. **Visualization** — single-variable, relationship, distribution, time-series,
-   summary-statistics, and advanced charts (parallel coordinates, radar, 3D scatter, sunburst).
-5. **Dashboard** — assemble saved charts into interactive dashboards.
-6. **Machine Learning** — train, evaluate, and export classification & regression models
-   (Logistic Regression, Decision Tree, Random Forest, SVM, Naive Bayes,
-   Linear / Ridge / Lasso, …).
-
-## Tech stack
-
-Python 3.11 · Streamlit · pandas · NumPy · scikit-learn · Plotly · Matplotlib · Seaborn · SciPy.
-
-## Project structure
-
-```
-data_mining/
-├── requirements.txt
-├── requirements-dev.txt
-├── README.md
-├── .gitignore
-└── app/                      # application package
-    ├── home.py               # app entry point (landing page)
-    ├── config.py             # theme, colors, app settings
-    ├── pages/                # the six workflow pages
-    ├── utils/                # preprocessing, visualization, charts, and ML modules
-    ├── static/               # images
-    └── tests/                # pytest suite
-```
-
-## Setup & run
-
-Requires **Python 3.11**.
+<!-- LIVE_DEMO -->
 
 ```bash
-# 1. From this folder (the project root), create & activate a virtual environment
-python -m venv .venv
-
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-# macOS / Linux
-# source .venv/bin/activate
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run the app (from the project root)
-streamlit run app/home.py
+git clone https://github.com/OWNER/REPO.git && cd REPO
+docker compose up --build
 ```
 
-The app then opens in your browser at <http://localhost:8501>.
+Then open <http://localhost:8501> and click **"✨ Try it with sample data"** — a deliberately
+messy 220-row sales dataset (missing values, mixed types, outliers) is bundled so you can walk
+the entire workflow without finding a file first.
 
-## Testing
+---
+
+## Engineering highlights
+
+This is the part I'd want a reviewer to read. The app is a wrapper; these are the decisions.
+
+### 1. No data leakage — and it's *proven*, not asserted
+
+Most no-code ML tools (and a lot of student projects) fit their scaler/encoder/imputer on the
+**entire** dataset before splitting. That leaks test-set information into training and produces
+accuracy scores that quietly lie.
+
+Every model here trains inside an sklearn `Pipeline` + `ColumnTransformer` that is fit **only on
+the training split** — and re-fit independently inside every cross-validation fold and every
+hyperparameter-search fold.
+
+`scripts/show_no_leakage.py` demonstrates it on demand:
+
+```text
+=== Demo 1: the scaler is fit on the TRAINING split only ===
+  fitted scaler.mean_     = 2.0968
+  X_train['x'].mean()     = 2.0968   <- the scaler matches this
+  full dataset ['x'].mean = 2.0709   <- and NOT this (test never leaked in)
+
+=== Demo 2: random target -> honest ~chance accuracy (no leakage) ===
+  Leaky    (select features on ALL data, then CV): 0.655   <- falsely optimistic
+  Our pipeline (preprocess fit inside each fold):  0.475   <- honest, ~0.5
+```
+
+Demo 2 is the important one: against a **completely random target**, a leaky pipeline reports
+65.5% accuracy — impossible, and exactly the kind of number that gets a model shipped by mistake.
+This pipeline reports 47.5%, correctly near chance.
+
+### 2. Models that are self-contained
+
+An exported model isn't just an estimator — it carries its own preprocessing. You can hand it a
+**raw** row (unscaled, unencoded, with missing values, with categories it has never seen) and it
+predicts correctly. The in-app *Predict* tab re-applies the same recorded feature-engineering
+recipe to a raw uploaded file, so the model behaves identically inside and outside the app.
+
+### 3. Built for messy real data, not just the happy path
+
+Hardened against the things that actually break data tools: numbers stored as text, non-UTF-8
+encodings, semicolon/tab delimiters, duplicate column headers, empty files, all-NaN columns,
+zero-variance features, high-cardinality categoricals (one-hot explosion), single-class targets,
+and datasets too small for the requested number of CV folds.
+
+### 4. Tested and containerized
+
+**98 automated tests** covering the ML pipeline, leakage prevention, ingestion edge cases,
+preprocessing replay, persistence robustness, security sanitization, chart builders, and the
+model export → reload → predict round-trip. Ships with a `Dockerfile` (non-root user, healthcheck)
+and `docker-compose.yml`.
+
+### 5. Security and durability
+
+User-supplied content (column names, filenames, chart titles) is escaped before reaching raw HTML;
+the replayable preprocessing pipeline uses an allowlist so a crafted pipeline file can't invoke
+arbitrary methods; dashboards are saved atomically and load fault-isolated, so one corrupt record
+can't wipe the rest.
+
+---
+
+## The workflow
+
+| # | Step | What it does |
+|---|------|--------------|
+| 1 | **Upload** | CSV/Excel import with encoding + delimiter fallback, automatic date detection, type inference |
+| 2 | **Data Quality** | Automated assessment with severity-ranked findings: missing values, outliers, skew, duplicates, high cardinality |
+| 3 | **Preprocessing** | Imputation, scaling, binning, encoding, datetime features, feature engineering/selection — all recordable and replayable |
+| 4 | **Visualization** | Single-variable, relationship, distribution, time-series, summary statistics, and advanced charts (parallel coordinates, radar, 3D scatter, sunburst) |
+| 5 | **Dashboard** | Assemble saved charts into filterable dashboards; persisted to disk and exportable as self-contained HTML |
+| 6 | **Machine Learning** | Train, tune, evaluate, compare, and export classification & regression models — then predict on new data |
+
+**Models:** Logistic Regression, Decision Tree, Random Forest, SVM, Naive Bayes, KNN,
+HistGradientBoosting · Linear, Ridge, Lasso, ElasticNet, KNN, HistGradientBoosting regressors —
+with optional grid/randomized hyperparameter search and cross-validation.
+
+---
+
+## Run it
+
+### Docker (recommended)
+
+```bash
+docker compose up --build
+```
+
+Open <http://localhost:8501>. To persist dashboards across restarts, mount a volume and set
+`DASHBOARD_DIR` (see [DOCKER.md](DOCKER.md)).
+
+### Local (Python 3.11)
+
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1        # Windows;  source .venv/bin/activate on macOS/Linux
+pip install -r requirements.txt
+streamlit run app/home.py         # from the project root
+```
+
+### Tests
 
 ```bash
 pip install -r requirements-dev.txt
-pytest app/tests
+pytest                            # 98 tests
 ```
 
-## Status
+### Verify the no-leakage claim yourself
 
-Active development. Recent work: a leakage-free scikit-learn training pipeline,
-security hardening, disk-persisted dashboards, a shared chart core, additional
-models with hyperparameter tuning, a predict-on-new-data tab, and a growing
-pytest suite.
+```bash
+python scripts/show_no_leakage.py
+```
+
+---
+
+## Architecture
+
+```
+data_mining/
+├── app/
+│   ├── home.py                  # entry point — landing page (WebGL hero via components.html)
+│   ├── config.py                # design system, CSS tokens, shared UI helpers
+│   ├── pages/                   # the six workflow pages
+│   ├── utils/                   # the engine (see below)
+│   ├── static/                  # bundled sample dataset + images
+│   └── tests/                   # 98 pytest tests
+├── scripts/show_no_leakage.py   # runnable proof of the leakage-free design
+├── Dockerfile · docker-compose.yml
+└── docs/                        # deployment guide, defense notes, positioning
+```
+
+`utils/` is where the work lives, separated by concern:
+
+- **`ml_processor.py`** — the leakage-free `Pipeline` + `ColumnTransformer` core; `classification_models.py` / `regression_models.py` extend it
+- **`preprocessing_pipeline.py`** — records transformations as replayable steps (with a security allowlist)
+- **`charts.py`** — one shared chart-building core used by both the dashboard and visualization layers
+- **`data_quality.py`**, **`feature_engineering.py`**, **`model_export.py`**, **`model_evaluation.py`**
+
+---
+
+## Tech stack
+
+**Python 3.11** · **Streamlit** (UI) · **pandas** / **NumPy** / **SciPy** (data) ·
+**scikit-learn** (ML) · **Plotly** / **Matplotlib** / **Seaborn** (charts) ·
+**pytest** (tests) · **Docker** (packaging) · **three.js** (landing-page WebGL background)
+
+---
+
+## Honest limitations
+
+- Single-user by design — no authentication or multi-tenancy.
+- In-memory processing: practical up to roughly a few hundred thousand rows; large files are
+  down-sampled for charting rather than distributed.
+- Automatic feature selection uses statistical tests that require numeric input, so it operates
+  on numeric columns only (manual and "use all" selection accept categoricals for both tasks).
+- Deep-learning models are out of scope; the focus is classical ML done correctly.
+
+---
+
+## About
+
+Built by **Bashar Dabayba** as an undergraduate graduation project (Data Science & AI).
+
+The goal was to make rigorous machine learning accessible to people who don't write code —
+without the methodological shortcuts that make "easy" ML tools produce numbers you can't trust.
+
+## License
+
+[MIT](LICENSE)
