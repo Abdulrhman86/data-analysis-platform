@@ -24,7 +24,8 @@ usually gets skipped in no-code tools.
 <!-- LIVE_DEMO -->
 
 ```bash
-git clone https://github.com/OWNER/REPO.git && cd REPO
+git clone https://github.com/Abdulrhman86/data-analysis-platform.git
+cd data-analysis-platform
 docker compose up --build
 ```
 
