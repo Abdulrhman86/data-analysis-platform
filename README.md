@@ -21,7 +21,7 @@ usually gets skipped in no-code tools.
 
 ## Try it in 30 seconds
 
-<!-- LIVE_DEMO -->
+**Streamlit:** https://data-analysis-platform-b8fwihmatorxvvsnrnkhmk.streamlit.app/
 
 ```bash
 git clone https://github.com/Abdulrhman86/data-analysis-platform.git
